@@ -1,0 +1,90 @@
+schema:
+  id: testcase.schema
+  version: 1
+  record_type: testcase
+  description: QA 测试用例知识的最小统一 schema，用于 Phase 1 手工维护与后续 Excel 导入落地。
+  required:
+    - id
+    - record_type
+    - name
+    - module
+    - preconditions
+    - steps
+    - expected
+    - priority
+    - tags
+    - content_text
+    - quality_flags
+    - source
+    - version
+  properties:
+    id:
+      type: string
+      description: 知识记录主键，建议格式为 TC-<source_id>。
+    record_type:
+      type: string
+      enum:
+        - testcase
+    name:
+      type: string
+      description: 测试用例名称，等价于测试用例的规范化标题。
+    module:
+      type: string
+      description: 业务模块或功能域。
+    preconditions:
+      type: array
+      items:
+        type: string
+      description: 前置条件列表。
+    steps:
+      type: array
+      items:
+        type: string
+      description: 测试步骤，按顺序保留。
+    expected:
+      type: string
+      description: 预期结果摘要。
+    priority:
+      type: string
+      description: 用例优先级，建议使用受控词表。
+    tags:
+      type: array
+      items:
+        type: string
+      description: 标签集合。
+    content_text:
+      type: string
+      description: 面向后续 RAG 的主文本，由名称、模块、前置条件、步骤和预期结果拼接而成。
+    quality_flags:
+      type: array
+      items:
+        type: string
+      description: 数据质量标记，如字段缺失、步骤不完整、映射冲突。
+    source:
+      type: object
+      required:
+        - source_type
+        - source_id
+        - source_file
+        - source_sheet
+        - source_row
+      properties:
+        source_type:
+          type: string
+          description: 当前阶段固定为 manual 或 excel。
+        source_id:
+          type: string
+          description: 来源主键或人工记录编号。
+        source_file:
+          type: string
+          description: 原始来源文件名，手工新增可写 manual-entry。
+        source_sheet:
+          type: string
+          description: Excel Sheet 名或 manual。
+        source_row:
+          type: integer
+          description: 原始行号，手工新增可写 0。
+    version:
+      type: integer
+      minimum: 1
+      description: 记录版本号，从 1 开始。

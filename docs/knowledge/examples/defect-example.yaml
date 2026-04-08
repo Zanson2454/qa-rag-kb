@@ -1,0 +1,33 @@
+id: DEF-AUTH-001
+record_type: defect
+title: 登录页在密码为空时返回 500 错误
+module: auth
+severity: high
+steps:
+  - 打开登录页。
+  - 输入合法用户名。
+  - 保持密码为空并提交。
+expected: 页面提示密码不能为空，并保持在登录页。
+actual: 服务端返回 500，页面显示通用错误提示。
+tags:
+  - login
+  - validation
+  - backend
+content_text: |
+  缺陷标题：登录页在密码为空时返回 500 错误
+  模块：auth
+  严重度：high
+  复现步骤：
+  1. 打开登录页。
+  2. 输入合法用户名。
+  3. 保持密码为空并提交。
+  预期结果：页面提示密码不能为空，并保持在登录页。
+  实际结果：服务端返回 500，页面显示通用错误提示。
+quality_flags: []
+source:
+  source_type: manual
+  source_id: AUTH-001
+  source_file: manual-entry
+  source_sheet: manual
+  source_row: 0
+version: 1

@@ -1,0 +1,36 @@
+id: TC-AUTH-001
+record_type: testcase
+name: 登录成功后跳转到工作台
+module: auth
+preconditions:
+  - 已存在一个启用状态的测试账号。
+  - 浏览器已清除历史登录态。
+steps:
+  - 打开登录页。
+  - 输入合法用户名和密码。
+  - 点击登录按钮。
+expected: 登录成功后跳转到工作台首页，并显示当前用户名称。
+priority: p1
+tags:
+  - login
+  - smoke
+  - happy-path
+content_text: |
+  用例名称：登录成功后跳转到工作台
+  模块：auth
+  前置条件：
+  1. 已存在一个启用状态的测试账号。
+  2. 浏览器已清除历史登录态。
+  测试步骤：
+  1. 打开登录页。
+  2. 输入合法用户名和密码。
+  3. 点击登录按钮。
+  预期结果：登录成功后跳转到工作台首页，并显示当前用户名称。
+quality_flags: []
+source:
+  source_type: manual
+  source_id: AUTH-TC-001
+  source_file: manual-entry
+  source_sheet: manual
+  source_row: 0
+version: 1
