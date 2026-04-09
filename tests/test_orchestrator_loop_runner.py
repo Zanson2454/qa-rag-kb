@@ -42,6 +42,10 @@ class LoopRunnerTests(unittest.TestCase):
                 "current_iteration": 13,
                 "current_state": "implementing",
                 "current_goal": "goal",
+                "current_plan": {
+                    "iteration": 13,
+                    "path": "docs/exec-plans/active/iter-013-sample-plan.md",
+                },
                 "last_outputs": {
                     "change": "harness/changes/iter-012-change.md",
                     "review_context": "harness/review-contexts/iter-013-context.md",
@@ -84,8 +88,30 @@ class LoopRunnerTests(unittest.TestCase):
         )
         result = run_local_loop(self.root, command_runner=self._successful_command_runner)
 
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["plan_path"].endswith("iter-013-sample-plan.md"))
+
+    def test_blocks_when_current_plan_file_missing(self) -> None:
+        from orchestrator.run_loop import run_local_loop
+
+        (self.root / "docs" / "exec-plans" / "active" / "iter-013-sample-plan.md").unlink()
+        result = run_local_loop(self.root, command_runner=self._successful_command_runner)
+
         self.assertFalse(result["ok"])
-        self.assertEqual("plan_conflict", result["stop_reason"])
+        self.assertEqual("plan_missing", result["stop_reason"])
+
+    def test_blocks_when_current_plan_iteration_mismatches(self) -> None:
+        from orchestrator.run_loop import run_local_loop
+
+        state_path = self.root / "orchestrator" / "state" / "task-state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["current_plan"]["iteration"] = 12
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        result = run_local_loop(self.root, command_runner=self._successful_command_runner)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("plan_iteration_mismatch", result["stop_reason"])
 
     def test_runs_fast_gates_before_business_gate(self) -> None:
         from orchestrator.run_loop import run_local_loop
@@ -150,6 +176,7 @@ class LoopRunnerTests(unittest.TestCase):
         self.assertIn("last_loop", state)
         self.assertIn("human_gate", state["last_loop"])
         self.assertIn("stop_reason", state["last_loop"])
+        self.assertIn("plan_path", state["last_loop"])
         self.assertIn("loop", result.stdout)
 
     def _successful_command_runner(

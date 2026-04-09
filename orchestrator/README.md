@@ -47,6 +47,13 @@ python3 orchestrator/run.py loop
 
 当前 `loop` 只做本地执行，不自动 `commit/push`。
 
+为了避免历史 iteration 下存在多个 plan 文件时产生歧义，状态文件可以显式提供：
+
+- `current_plan.iteration`
+- `current_plan.path`
+
+当该字段存在时，`loop` 会优先使用它作为 canonical plan，而不是继续依赖“同轮只有一个 plan 文件”的假设。
+
 ## 状态文件
 
 `orchestrator/state/task-state.json` 当前至少包含：

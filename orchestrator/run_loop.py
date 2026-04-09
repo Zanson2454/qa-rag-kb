@@ -80,12 +80,15 @@ def _load_context(root: Path, state: dict[str, Any]) -> dict[str, Any]:
     change = root / state.get("last_outputs", {}).get("change", "")
     review_context = root / state.get("last_outputs", {}).get("review_context", "")
     plan_candidates = _find_iteration_plans(root, int(state["current_iteration"]))
-    plan_path = plan_candidates[0] if len(plan_candidates) == 1 else None
+    explicit_plan, explicit_plan_error = _resolve_current_plan(root, state)
+    plan_path = explicit_plan if explicit_plan is not None else (plan_candidates[0] if len(plan_candidates) == 1 else None)
 
     stop_reason = None
     if not change.exists() or not review_context.exists():
         stop_reason = "context_missing"
-    elif len(plan_candidates) > 1:
+    elif explicit_plan_error is not None:
+        stop_reason = explicit_plan_error
+    elif explicit_plan is None and len(plan_candidates) > 1:
         stop_reason = "plan_conflict"
     elif plan_path is None:
         stop_reason = "plan_missing"
@@ -104,6 +107,18 @@ def _find_iteration_plans(root: Path, iteration: int) -> list[Path]:
         return []
     prefix = f"iter-{iteration:03d}-"
     return [path for path in sorted(plan_dir.glob("*.md")) if path.name.startswith(prefix)]
+
+
+def _resolve_current_plan(root: Path, state: dict[str, Any]) -> tuple[Path | None, str | None]:
+    current_plan = state.get("current_plan")
+    if not current_plan:
+        return None, None
+    if int(current_plan["iteration"]) != int(state["current_iteration"]):
+        return None, "plan_iteration_mismatch"
+    path = root / current_plan["path"]
+    if not path.exists():
+        return None, "plan_missing"
+    return path, None
 
 
 def _fast_gate_commands() -> list[list[str]]:
