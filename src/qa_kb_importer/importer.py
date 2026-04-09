@@ -349,14 +349,23 @@ class FixedTemplateImporter:
         expected_source_section = "期望结果*"
         if not expected:
             description = self._clean_multiline(sections.get("缺陷描述*", ""))
-            quality_flags.append("missing_expected_section")
-            if description:
-                expected_resolution = "expected_missing_but_description_present"
-                expected_source_section = "缺陷描述*"
+            recovered_expected = self._recover_defect_expected_candidate(
+                title=title,
+                description=description,
+            )
+            if recovered_expected is not None:
+                expected = recovered_expected["expected_candidate"]
+                expected_resolution = recovered_expected["expected_resolution"]
+                expected_source_section = recovered_expected["expected_source_section"]
+                quality_flags.append("generated_expected_candidate")
             else:
-                expected_resolution = "expected_missing_unrecoverable"
-                expected_source_section = ""
-
+                quality_flags.append("missing_expected_section")
+                if description:
+                    expected_resolution = "expected_missing_but_description_present"
+                    expected_source_section = "缺陷描述*"
+                else:
+                    expected_resolution = "expected_missing_unrecoverable"
+                    expected_source_section = ""
         actual = self._clean_multiline(sections.get("实际结果", ""))
         if not actual:
             actual = self._clean_multiline(sections.get("缺陷描述*", ""))
@@ -407,6 +416,63 @@ class FixedTemplateImporter:
             },
             "version": 1,
         }
+
+    def _recover_defect_expected_candidate(
+        self, title: str, description: str
+    ) -> dict[str, str] | None:
+        for source_section, text in (
+            ("缺陷描述*", description),
+            ("缺陷标题", title),
+        ):
+            candidate = self._build_expected_candidate_from_symptom(text)
+            if candidate:
+                return {
+                    "expected_candidate": candidate,
+                    "expected_resolution": "expected_generated_from_symptom",
+                    "expected_source_section": source_section,
+                }
+        return None
+
+    def _build_expected_candidate_from_symptom(self, text: str) -> str | None:
+        normalized = self._clean_multiline(text)
+        if not normalized:
+            return None
+
+        if self._has_empty_error_symptom(normalized):
+            subject = self._extract_empty_error_subject(normalized)
+            if subject:
+                return f"不应报错{subject}"
+            return "不应报错为空"
+
+        if self._has_inconsistency_symptom(normalized):
+            return "相关结果应一致"
+
+        if self._has_failure_symptom(normalized):
+            return "操作应成功，不应失败"
+
+        return None
+
+    def _has_failure_symptom(self, text: str) -> bool:
+        return "失败" in text
+
+    def _has_inconsistency_symptom(self, text: str) -> bool:
+        return "不一致" in text
+
+    def _has_empty_error_symptom(self, text: str) -> bool:
+        return "报错" in text and "为空" in text
+
+    def _extract_empty_error_subject(self, text: str) -> str:
+        match = re.search(r"报错\s*([^\n，。；;]{1,40}?为空)", text)
+        if match:
+            return self._clean_text(match.group(1))
+        match = re.search(r"([^\n，。；;]{1,40}?为空)", text)
+        if match and "报错" in match.group(1):
+            return self._clean_text(match.group(1).removeprefix("报错"))
+        if "报错" in text:
+            tail = text.split("报错", 1)[1].strip(" ，。；;\n")
+            if tail:
+                return tail[:40]
+        return ""
 
     def _normalize_testcase(self, case: dict[str, Any]) -> dict[str, Any]:
         name = self._clean_text(case["header"].get("用例名称", ""))
