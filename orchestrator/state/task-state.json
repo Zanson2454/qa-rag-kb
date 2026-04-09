@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 20,
+  "current_iteration": 21,
   "current_state": "completed",
-  "current_goal": "完成 Iter-020：复验 business gate 语义传递，确认当前无需重开实现。",
+  "current_goal": "完成 Iter-021：恢复 defect expected 候选并清除当前 warnings=3 基线。",
   "current_plan": {
-    "iteration": 20,
-    "path": "docs/exec-plans/active/iter-020-gate-semantics-revalidation-plan.md"
+    "iteration": 21,
+    "path": "docs/exec-plans/active/iter-021-expected-candidate-recovery-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-020-change.md",
-    "evaluation": "harness/evaluations/iter-020-eval.md",
-    "reflection": "harness/reflections/iter-020-reflection.md",
-    "review_context": "harness/review-contexts/iter-021-context.md"
+    "change": "harness/changes/iter-021-change.md",
+    "evaluation": "harness/evaluations/iter-021-eval.md",
+    "reflection": "harness/reflections/iter-021-reflection.md",
+    "review_context": "harness/review-contexts/iter-022-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-020，已重新验收 gate 语义传递链路且确认无需重开实现；下一步应分析 gate=warning warnings=3 的具体来源，并判断 importer 质量层是否还需继续收敛。",
+    "reason": "当前轮次已完成 Iter-021，小批次 importer 基线已从 gate=warning warnings=3 收敛到 gate=passed warnings=0；下一步应在更大样本下验证当前候选恢复规则是否稳定。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T07:17:34.781297+00:00",
+  "updated_at": "2026-04-09T08:04:57.978805+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -88,21 +88,26 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-020，已重新验收 gate 语义传递链路且确认无需重开实现。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-021，已通过最小候选恢复规则将小批次 importer 基线收敛到 gate=passed。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 98,
+    "score": 99,
     "errors": [],
     "suggestions": [
-      "下一轮应分析当前 business gate warning 的具体来源，并判断 importer 质量层是否需要继续收敛。",
-      "若 warning 可接受，应把当前 loop 结果固化为新的可用基线，而不是继续修改 gate 传播链路。"
+      "下一轮应在更大样本上重新验证当前候选恢复规则是否稳定。",
+      "若中等批次仍稳定，应把当前 importer passed 基线固化给 loop 主线。"
     ]
   },
   "last_loop": {
     "ok": true,
-    "iteration": 20,
-    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-020-gate-semantics-revalidation-plan.md",
+    "iteration": 21,
+    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-021-expected-candidate-recovery-plan.md",
     "stop_reason": null,
     "human_gate": true
   }

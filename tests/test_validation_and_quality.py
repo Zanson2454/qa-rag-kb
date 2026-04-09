@@ -18,6 +18,7 @@ def _load_validation_symbols() -> tuple[object, object, object, object]:
     validation_module = importlib.import_module("qa_kb_importer.validation")
     return (
         importer_module.FixedTemplateImporter,
+        importer_module.SheetRow,
         quality_module.build_batch_quality_report,
         quality_module.determine_batch_gate,
         validation_module.validate_normalized_record,
@@ -26,10 +27,26 @@ def _load_validation_symbols() -> tuple[object, object, object, object]:
 
 (
     FixedTemplateImporter,
+    SheetRow,
     build_batch_quality_report,
     determine_batch_gate,
     validate_normalized_record,
 ) = _load_validation_symbols()
+
+
+class SymptomOnlyDefectImporter(FixedTemplateImporter):
+    def __init__(self, defect_rows: list[SheetRow]) -> None:
+        super().__init__(
+            defect_file=ROOT / "input" / "issue-export-20260408.xlsx",
+            testcase_file=ROOT / "input" / "测试用例-scm-20260408.xlsx",
+        )
+        self._defect_rows = defect_rows
+
+    def _read_defect_rows(self):
+        return self._defect_rows
+
+    def _read_testcase_cases(self):
+        return []
 
 
 class NormalizedValidationTests(unittest.TestCase):
@@ -128,6 +145,33 @@ class NormalizedValidationTests(unittest.TestCase):
         self.assertIn("missing_expected", result["warning_codes"])
         self.assertIn("missing_actual", result["warning_codes"])
 
+    def test_recovered_expected_candidate_suppresses_missing_expected_warning(
+        self,
+    ) -> None:
+        defect = self.importer._normalize_defect(
+            SheetRow(
+                row_number=5,
+                values={
+                    "ID": "4",
+                    "标题": "导入失败缺陷",
+                    "内容": "### 缺陷描述*\n导入失败，任务执行失败后无法继续\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n导入失败",
+                    "标签": "area/A",
+                    "严重程度": "一般",
+                    "状态": "待处理",
+                    "来源": "代码开发",
+                    "环境": "测试",
+                },
+            )
+        )
+
+        result = validate_normalized_record(
+            record=defect,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertNotIn("missing_expected", result["warning_codes"])
+        self.assertIn("generated_expected_candidate", result["quality_flags"])
+
     def test_missing_expected_can_be_blocking_when_unrecoverable(self) -> None:
         defect = self.importer.import_defects(limit=1)[0]
         defect["expected"] = ""
@@ -195,6 +239,162 @@ class BatchQualityTests(unittest.TestCase):
             self.assertEqual("excel", report["source_type"])
             self.assertIn(report["gate"], {"passed", "warning", "failed"})
             self.assertEqual(str(detail_files[0]), report["details_file"])
+
+    def test_batch_quality_report_drops_missing_expected_after_recovery(
+        self,
+    ) -> None:
+        baseline_validations = [
+            validate_normalized_record(
+                record={
+                    "id": "DEF-41",
+                    "record_type": "defect",
+                    "title": "导入失败缺陷",
+                    "display_title": "导入失败缺陷",
+                    "module": "area/A",
+                    "severity": "一般",
+                    "steps": ["步骤1", "步骤2"],
+                    "expected": "",
+                    "expected_resolution": "expected_missing_but_description_present",
+                    "expected_source_section": "缺陷描述*",
+                    "actual": "导入失败",
+                    "content_text": "导入失败缺陷",
+                    "quality_flags": ["missing_expected_section"],
+                },
+                schema_path=ROOT
+                / "docs"
+                / "knowledge"
+                / "schemas"
+                / "defect.schema.yaml",
+            ),
+            validate_normalized_record(
+                record={
+                    "id": "DEF-42",
+                    "record_type": "defect",
+                    "title": "数据不一致缺陷",
+                    "display_title": "数据不一致缺陷",
+                    "module": "area/A",
+                    "severity": "一般",
+                    "steps": ["步骤1", "步骤2"],
+                    "expected": "",
+                    "expected_resolution": "expected_missing_but_description_present",
+                    "expected_source_section": "缺陷描述*",
+                    "actual": "数据不一致",
+                    "content_text": "数据不一致缺陷",
+                    "quality_flags": ["missing_expected_section"],
+                },
+                schema_path=ROOT
+                / "docs"
+                / "knowledge"
+                / "schemas"
+                / "defect.schema.yaml",
+            ),
+            validate_normalized_record(
+                record={
+                    "id": "DEF-43",
+                    "record_type": "defect",
+                    "title": "销售渠道为空报错缺陷",
+                    "display_title": "销售渠道为空报错缺陷",
+                    "module": "area/A",
+                    "severity": "一般",
+                    "steps": ["步骤1", "步骤2"],
+                    "expected": "",
+                    "expected_resolution": "expected_missing_but_description_present",
+                    "expected_source_section": "缺陷描述*",
+                    "actual": "报错销售渠道为空",
+                    "content_text": "销售渠道为空报错缺陷",
+                    "quality_flags": ["missing_expected_section"],
+                },
+                schema_path=ROOT
+                / "docs"
+                / "knowledge"
+                / "schemas"
+                / "defect.schema.yaml",
+            ),
+        ]
+        baseline_warning_count = sum(
+            1 for item in baseline_validations if item["warnings"]
+        )
+        baseline_admissible_warning_count = sum(
+            1
+            for item in baseline_validations
+            if any(
+                detail.get("admission") == "admissible"
+                for detail in item["warning_details"]
+            )
+        )
+        baseline_warning_rate = baseline_warning_count / len(baseline_validations)
+
+        importer = SymptomOnlyDefectImporter(
+            defect_rows=[
+                SheetRow(
+                    row_number=5,
+                    values={
+                        "ID": "41",
+                        "类型": "缺陷",
+                        "标题": "导入失败缺陷",
+                        "内容": "### 缺陷描述*\n导入失败，任务执行失败后无法继续\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n导入失败",
+                        "状态": "待处理",
+                        "严重程度": "一般",
+                        "标签": "area/A",
+                        "来源": "代码开发",
+                        "环境": "测试",
+                    },
+                ),
+                SheetRow(
+                    row_number=6,
+                    values={
+                        "ID": "42",
+                        "类型": "缺陷",
+                        "标题": "数据不一致缺陷",
+                        "内容": "### 缺陷描述*\n订单状态数据不一致，两个页面显示不一致\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n数据不一致",
+                        "状态": "待处理",
+                        "严重程度": "一般",
+                        "标签": "area/A",
+                        "来源": "代码开发",
+                        "环境": "测试",
+                    },
+                ),
+                SheetRow(
+                    row_number=7,
+                    values={
+                        "ID": "43",
+                        "类型": "缺陷",
+                        "标题": "销售渠道为空报错缺陷",
+                        "内容": "### 缺陷描述*\n报错销售渠道为空，保存流程中断\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n报错销售渠道为空",
+                        "状态": "待处理",
+                        "严重程度": "一般",
+                        "标签": "area/A",
+                        "来源": "代码开发",
+                        "环境": "测试",
+                    },
+                ),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_root = Path(tmp_dir)
+            result = importer.export_small_batch(
+                knowledge_root=out_root,
+                defect_limit=3,
+                testcase_limit=0,
+            )
+
+            report = yaml.safe_load(
+                next(
+                    (out_root / "imports" / "reports").glob("*-report.yaml")
+                ).read_text()
+            )
+
+            self.assertNotIn("missing_expected", report["warning_code_distribution"])
+            self.assertLess(result["warning_count"], baseline_warning_count)
+            self.assertLess(
+                result["admissible_warning_count"], baseline_admissible_warning_count
+            )
+            self.assertLess(result["warning_rate"], baseline_warning_rate)
+            self.assertLess(report["quality_warning_count"], baseline_warning_count)
+            self.assertLess(
+                report["admissible_warning_count"], baseline_admissible_warning_count
+            )
 
     def test_batch_gate_can_return_passed(self) -> None:
         gate = determine_batch_gate(

@@ -59,19 +59,27 @@ class FixedTemplateImporter:
         created_at = datetime.now(timezone.utc).isoformat()
         errors: list[dict[str, Any]] = []
 
-        raw_defect_path = layout["raw_defects"] / f"{import_batch_id}-{self.defect_file.name}"
-        raw_testcase_path = layout["raw_testcases"] / f"{import_batch_id}-{self.testcase_file.name}"
+        raw_defect_path = (
+            layout["raw_defects"] / f"{import_batch_id}-{self.defect_file.name}"
+        )
+        raw_testcase_path = (
+            layout["raw_testcases"] / f"{import_batch_id}-{self.testcase_file.name}"
+        )
         shutil.copy2(self.defect_file, raw_defect_path)
         shutil.copy2(self.testcase_file, raw_testcase_path)
 
         defects = self._collect_defect_records(limit=defect_limit, errors=errors)
         testcases = self._collect_testcase_records(limit=testcase_limit, errors=errors)
-        testcase_step_row_count_before_grouping = sum(len(case["snapshot"]["entries"]) for case in testcases)
+        testcase_step_row_count_before_grouping = sum(
+            len(case["snapshot"]["entries"]) for case in testcases
+        )
         testcase_case_count_after_grouping = len(testcases)
         conflict_count = 0
 
         for item in defects:
-            normalized_path = layout["normalized_defects"] / f"{item['record']['id']}.yaml"
+            normalized_path = (
+                layout["normalized_defects"] / f"{item['record']['id']}.yaml"
+            )
             snapshot_path = layout["snapshot_defects"] / f"{item['record']['id']}.yaml"
             if normalized_path.exists():
                 conflict_count += 1
@@ -88,8 +96,12 @@ class FixedTemplateImporter:
             self._write_yaml(snapshot_path, item["snapshot"])
 
         for item in testcases:
-            normalized_path = layout["normalized_testcases"] / f"{item['record']['id']}.yaml"
-            snapshot_path = layout["snapshot_testcases"] / f"{item['record']['id']}.yaml"
+            normalized_path = (
+                layout["normalized_testcases"] / f"{item['record']['id']}.yaml"
+            )
+            snapshot_path = (
+                layout["snapshot_testcases"] / f"{item['record']['id']}.yaml"
+            )
             if normalized_path.exists():
                 conflict_count += 1
                 errors.append(
@@ -122,7 +134,9 @@ class FixedTemplateImporter:
             "success_count": success_count,
             "failure_count": failure_count,
             "conflict_count": conflict_count,
-            "warning_count": sum(len(item["record"]["quality_flags"]) for item in defects + testcases),
+            "warning_count": sum(
+                len(item["record"]["quality_flags"]) for item in defects + testcases
+            ),
         }
         error_payload = {
             "import_batch_id": import_batch_id,
@@ -153,7 +167,9 @@ class FixedTemplateImporter:
             "batch_id": import_batch_id,
             "records": validation_results,
         }
-        validation_details_path = layout["reports"] / f"{import_batch_id}-validation-details.yaml"
+        validation_details_path = (
+            layout["reports"] / f"{import_batch_id}-validation-details.yaml"
+        )
         self._write_yaml(validation_details_path, details_payload)
 
         report = build_batch_quality_report(
@@ -237,7 +253,9 @@ class FixedTemplateImporter:
     def _build_import_batch_id(self) -> str:
         return datetime.now(timezone.utc).strftime("batch-%Y%m%dT%H%M%SZ")
 
-    def _collect_defect_records(self, limit: int, errors: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    def _collect_defect_records(
+        self, limit: int, errors: list[dict[str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         rows = self._read_defect_rows()
         defects: list[dict[str, Any]] = []
         seen_source_ids: set[str] = set()
@@ -540,7 +558,10 @@ class FixedTemplateImporter:
             headers,
             ["ID", "类型", "标题", "内容", "状态", "严重程度", "标签", "来源", "环境"],
         )
-        return [SheetRow(row.row_number, self._row_values(headers, row.values)) for row in rows[3:]]
+        return [
+            SheetRow(row.row_number, self._row_values(headers, row.values))
+            for row in rows[3:]
+        ]
 
     def _read_testcase_cases(self) -> list[dict[str, Any]]:
         workbook = _XlsxXmlWorkbook(self.testcase_file)
@@ -548,7 +569,15 @@ class FixedTemplateImporter:
         headers = self._combine_testcase_headers(rows[0].values, rows[1].values)
         self._validate_columns(
             headers,
-            ["用例编号", "用例名称", "测试集", "优先级", "前置条件", "步骤与结果/操作步骤", "步骤与结果/预期结果"],
+            [
+                "用例编号",
+                "用例名称",
+                "测试集",
+                "优先级",
+                "前置条件",
+                "步骤与结果/操作步骤",
+                "步骤与结果/预期结果",
+            ],
         )
 
         cases: list[dict[str, Any]] = []
@@ -739,7 +768,9 @@ class _XlsxXmlWorkbook:
                 row_number = int(row.attrib.get("r", "0"))
                 cells: dict[int, str] = {}
                 for cell in row.findall(f"{{{NS_MAIN}}}c"):
-                    cells[self._column_index(cell.attrib.get("r", ""))] = self._cell_value(cell, shared)
+                    cells[self._column_index(cell.attrib.get("r", ""))] = (
+                        self._cell_value(cell, shared)
+                    )
                 max_col = max(cells.keys(), default=0)
                 values = [cells.get(index, "") for index in range(1, max_col + 1)]
                 rows.append(SheetRow(row_number=row_number, values=values))
@@ -752,13 +783,18 @@ class _XlsxXmlWorkbook:
             return []
         values: list[str] = []
         for item in root.findall(f"{{{NS_MAIN}}}si"):
-            values.append("".join(node.text or "" for node in item.iter(f"{{{NS_MAIN}}}t")))
+            values.append(
+                "".join(node.text or "" for node in item.iter(f"{{{NS_MAIN}}}t"))
+            )
         return values
 
     def _sheet_target(self, archive: zipfile.ZipFile, sheet_name: str) -> str:
         workbook = ET.fromstring(archive.read("xl/workbook.xml"))
         rels = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
-        rel_map = {rel.attrib["Id"]: rel.attrib["Target"] for rel in rels.findall(f"{{{NS_PKG_REL}}}Relationship")}
+        rel_map = {
+            rel.attrib["Id"]: rel.attrib["Target"]
+            for rel in rels.findall(f"{{{NS_PKG_REL}}}Relationship")
+        }
         sheets = workbook.find(f"{{{NS_MAIN}}}sheets")
         if sheets is None:
             raise ValueError("Workbook missing sheets")
@@ -775,7 +811,9 @@ class _XlsxXmlWorkbook:
         if cell_type == "s" and value_node is not None and value_node.text is not None:
             return shared_strings[int(value_node.text)]
         if cell_type == "inlineStr" and inline_node is not None:
-            return "".join(node.text or "" for node in inline_node.iter(f"{{{NS_MAIN}}}t"))
+            return "".join(
+                node.text or "" for node in inline_node.iter(f"{{{NS_MAIN}}}t")
+            )
         if value_node is not None and value_node.text is not None:
             return value_node.text
         return ""

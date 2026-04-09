@@ -433,6 +433,93 @@ class FixedTemplateImporterTests(unittest.TestCase):
         )
         self.assertEqual("", defect["expected_source_section"])
 
+    def test_normalize_defect_recovers_expected_from_failure_symptom(self) -> None:
+        row = SheetRow(
+            row_number=5,
+            values={
+                "ID": "4",
+                "标题": "导入失败缺陷",
+                "内容": "### 缺陷描述*\n导入失败，任务执行失败后无法继续\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n导入失败",
+                "标签": "area/A",
+                "严重程度": "一般",
+                "状态": "待处理",
+                "来源": "代码开发",
+                "环境": "测试",
+            },
+        )
+
+        defect = self.importer._normalize_defect(row)
+
+        self.assertTrue(defect["expected"])
+        self.assertTrue(
+            "成功" in defect["expected"] or "不应失败" in defect["expected"],
+            defect["expected"],
+        )
+        self.assertEqual(
+            "expected_generated_from_symptom", defect["expected_resolution"]
+        )
+        self.assertEqual("缺陷描述*", defect["expected_source_section"])
+        self.assertIn("generated_expected_candidate", defect["quality_flags"])
+
+    def test_normalize_defect_recovers_expected_from_inconsistency_symptom(
+        self,
+    ) -> None:
+        row = SheetRow(
+            row_number=5,
+            values={
+                "ID": "5",
+                "标题": "数据不一致缺陷",
+                "内容": "### 缺陷描述*\n订单状态数据不一致，两个页面显示不一致\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n数据不一致",
+                "标签": "area/A",
+                "严重程度": "一般",
+                "状态": "待处理",
+                "来源": "代码开发",
+                "环境": "测试",
+            },
+        )
+
+        defect = self.importer._normalize_defect(row)
+
+        self.assertTrue(defect["expected"])
+        self.assertIn("应一致", defect["expected"])
+        self.assertEqual(
+            "expected_generated_from_symptom", defect["expected_resolution"]
+        )
+        self.assertEqual("缺陷描述*", defect["expected_source_section"])
+        self.assertIn("generated_expected_candidate", defect["quality_flags"])
+
+    def test_normalize_defect_recovers_expected_from_empty_error_symptom(
+        self,
+    ) -> None:
+        row = SheetRow(
+            row_number=5,
+            values={
+                "ID": "6",
+                "标题": "销售渠道为空报错缺陷",
+                "内容": "### 缺陷描述*\n报错销售渠道为空，保存流程中断\n### 重现步骤\n步骤1\n步骤2\n### 实际结果\n报错销售渠道为空",
+                "标签": "area/A",
+                "严重程度": "一般",
+                "状态": "待处理",
+                "来源": "代码开发",
+                "环境": "测试",
+            },
+        )
+
+        defect = self.importer._normalize_defect(row)
+
+        self.assertTrue(defect["expected"])
+        self.assertTrue(
+            defect["expected"].startswith("不应报错")
+            or defect["expected"].startswith("不应出现"),
+            defect["expected"],
+        )
+        self.assertIn("销售渠道为空", defect["expected"])
+        self.assertEqual(
+            "expected_generated_from_symptom", defect["expected_resolution"]
+        )
+        self.assertEqual("缺陷描述*", defect["expected_source_section"])
+        self.assertIn("generated_expected_candidate", defect["quality_flags"])
+
 
 if __name__ == "__main__":
     unittest.main()
