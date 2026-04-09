@@ -1,0 +1,64 @@
+{
+  "task_id": "qa-rag-kb-main",
+  "current_iteration": 12,
+  "current_state": "completed",
+  "current_goal": "实现 Iter-012：defect expected 分类与 warning admission policy，为 importer 增加 admissible/blocking 收录策略。",
+  "last_outputs": {
+    "change": "harness/changes/iter-012-change.md",
+    "evaluation": "harness/evaluations/iter-012-eval.md",
+    "reflection": "harness/reflections/iter-012-reflection.md",
+    "review_context": "harness/review-contexts/iter-013-context.md"
+  },
+  "decision": {
+    "next_action": "continue",
+    "reason": "当前轮次已完成 Iter-012，下一步应基于最新 review context 决定是继续收敛 defect expected 候选补全，还是固化 warning 准入标准后进入检索层前置判断。",
+    "prompt_file": "orchestrator/runs/iter-005-continue.md"
+  },
+  "limits": {
+    "max_retry": 3,
+    "retry_count": 0
+  },
+  "updated_at": "2026-04-09T04:51:28+00:00",
+  "history": [
+    {
+      "state": "evaluating",
+      "action": "implement",
+      "reason": "当前处于 implementing，生成实现 prompt 并推进到 evaluating。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "最近 evaluation 已通过，当前轮次完成。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Phase 1 Alignment & Closure，等待基于最新 review context 决定下一步。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-010，等待基于最新 review context 决定是否进入中等批次试运行与阈值调优。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-011，已获得中等批次 gate 结果与 warning 分布证据，等待决定下一轮是继续收敛 warning 还是进入检索层前置判断。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-012，已把 missing_expected 收敛为 admission policy，并获得 gate=warning 的中等批次证据。"
+    }
+  ],
+  "last_evaluation": {
+    "passed": true,
+    "score": 96,
+    "errors": [],
+    "suggestions": [
+      "下一轮可评估是否要从 `缺陷描述*` 中生成候选 `expected`，进一步降低 admissible warning 占比。",
+      "可继续把 validation details 从 section 级推进到源文本片段级，提升人工修复效率。",
+      "在进入检索层前，应先把 warning admission policy 和“允许收录”的规则写成显式准入标准。"
+    ]
+  }
+}
