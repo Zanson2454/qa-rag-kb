@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 23,
+  "current_iteration": 24,
   "current_state": "completed",
-  "current_goal": "完成 Iter-023：执行最后 1 轮 importer warning closure 并正式签收。",
+  "current_goal": "完成 Iter-024：定义知识库下一阶段 retrieval-readiness 的执行计划与交接边界。",
   "current_plan": {
-    "iteration": 23,
-    "path": "docs/exec-plans/active/iter-023-one-round-warning-closure-plan.md"
+    "iteration": 24,
+    "path": "docs/exec-plans/active/iter-024-retrieval-readiness-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-023-change.md",
-    "evaluation": "harness/evaluations/iter-023-eval.md",
-    "reflection": "harness/reflections/iter-023-reflection.md",
-    "review_context": "harness/review-contexts/iter-024-context.md"
+    "change": "harness/changes/iter-024-change.md",
+    "evaluation": "harness/evaluations/iter-024-eval.md",
+    "reflection": "harness/reflections/iter-024-reflection.md",
+    "review_context": "harness/review-contexts/iter-025-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-023，已按最后 1 轮 stop rule 将中等批次 warning 从 18 收敛到 7，并正式签收为 improved baseline；下一步应进入下一阶段 planning，不再继续 Phase 1 warning 调优。",
+    "reason": "当前轮次已完成 Iter-024 planning，已将知识库主线从 Phase 1 warning 收口正式切到 retrieval-readiness，并把下一阶段范围收敛为 chunk/export/eval baseline；下一步应直接执行 Iter-024 计划，而不是继续 Phase 1 warning 调优或提前跳到完整 RAG。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T08:59:35.164655+00:00",
+  "updated_at": "2026-04-09T10:33:45Z",
   "history": [
     {
       "state": "evaluating",
@@ -103,15 +103,20 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-023，已按 stop rule 完成最后 1 轮 warning closure，并签收为 improved baseline。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-024 planning，已把知识库主线切到 retrieval-readiness，并定义下一轮应执行的 chunk/export/eval baseline 计划。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 96,
+    "score": 97,
     "errors": [],
     "suggestions": [
-      "下一步应进入下一阶段 planning，而不是继续 Phase 1 warning 调优。",
-      "将 DEF-822065、DEF-823636 和 TC-1735084 作为已知限制记录到后续数据治理 backlog。"
+      "下一轮直接执行 docs/exec-plans/active/iter-024-retrieval-readiness-plan.md。",
+      "将 retrieval 层范围限制在 chunk/export/eval baseline，暂不引入 embedding、vector DB 或问答链路。"
     ]
   },
   "last_loop": {
