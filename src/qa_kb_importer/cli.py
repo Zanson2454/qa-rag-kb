@@ -23,8 +23,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="docs/knowledge",
         help="Phase 1 知识库根目录",
     )
-    parser.add_argument("--defect-limit", type=int, default=3, help="导出的 defect 数量")
-    parser.add_argument("--testcase-limit", type=int, default=3, help="导出的 testcase 数量")
+    parser.add_argument(
+        "--defect-limit", type=int, default=3, help="导出的 defect 数量"
+    )
+    parser.add_argument(
+        "--testcase-limit", type=int, default=3, help="导出的 testcase 数量"
+    )
     return parser
 
 
@@ -50,7 +54,7 @@ def main() -> int:
         f"warning_rate={result['warning_rate']} report={result['report_path']} "
         f"details={result['validation_details_path']} under {args.knowledge_root}"
     )
-    return 0
+    return 1 if result["gate"] == "failed" else 0
 
 
 if __name__ == "__main__":

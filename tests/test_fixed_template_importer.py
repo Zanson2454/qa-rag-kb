@@ -335,6 +335,38 @@ class FixedTemplateImporterTests(unittest.TestCase):
         self.assertIn("conflicts=0", printed)
         self.assertIn("warning_rate=0.15", printed)
 
+    def test_cli_returns_nonzero_when_gate_failed(self) -> None:
+        summary = {
+            "import_batch_id": "batch-test",
+            "defect_count": 3,
+            "testcase_count": 3,
+            "error_count": 6,
+            "gate": "failed",
+            "warning_count": 3,
+            "schema_fail_count": 0,
+            "quality_warning_count": 3,
+            "semantic_warning_count": 3,
+            "admissible_warning_count": 3,
+            "blocking_warning_count": 0,
+            "conflict_count": 6,
+            "warning_rate": 0.5,
+            "report_path": "/tmp/report.yaml",
+            "validation_details_path": "/tmp/details.yaml",
+        }
+        with patch(
+            "qa_kb_importer.cli.FixedTemplateImporter.export_small_batch",
+            return_value=summary,
+        ):
+            with patch("builtins.print") as print_mock:
+                with patch.object(sys, "argv", ["qa_kb_importer"]):
+                    exit_code = main()
+
+        self.assertEqual(1, exit_code)
+        printed = print_mock.call_args[0][0]
+        self.assertIn("gate=failed", printed)
+        self.assertIn("errors=6", printed)
+        self.assertIn("conflicts=6", printed)
+
     def test_normalize_defect_marks_expected_section_present(self) -> None:
         row = SheetRow(
             row_number=5,

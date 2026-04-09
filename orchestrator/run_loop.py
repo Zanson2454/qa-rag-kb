@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -12,7 +14,9 @@ from .validation import validate_state_payload
 CommandRunner = Callable[[list[str], Path, dict[str, str] | None], dict[str, Any]]
 
 
-def run_local_loop(root: Path, command_runner: CommandRunner | None = None) -> dict[str, Any]:
+def run_local_loop(
+    root: Path, command_runner: CommandRunner | None = None
+) -> dict[str, Any]:
     runner = command_runner or _default_command_runner
     state = _load_state(root)
     iteration = int(state["current_iteration"])
@@ -42,10 +46,13 @@ def run_local_loop(root: Path, command_runner: CommandRunner | None = None) -> d
                 "stop_reason": "fast_gate_failed",
             }
 
+    knowledge_root = _prepare_loop_knowledge_root(root, iteration)
     business_cmd = [
         "python3",
         "-m",
         "qa_kb_importer",
+        "--knowledge-root",
+        str(knowledge_root),
     ]
     business_env = {"PYTHONPATH": "src"}
     business_result = runner(business_cmd, root, business_env)
@@ -81,7 +88,11 @@ def _load_context(root: Path, state: dict[str, Any]) -> dict[str, Any]:
     review_context = root / state.get("last_outputs", {}).get("review_context", "")
     plan_candidates = _find_iteration_plans(root, int(state["current_iteration"]))
     explicit_plan, explicit_plan_error = _resolve_current_plan(root, state)
-    plan_path = explicit_plan if explicit_plan is not None else (plan_candidates[0] if len(plan_candidates) == 1 else None)
+    plan_path = (
+        explicit_plan
+        if explicit_plan is not None
+        else (plan_candidates[0] if len(plan_candidates) == 1 else None)
+    )
 
     stop_reason = None
     if not change.exists() or not review_context.exists():
@@ -106,10 +117,14 @@ def _find_iteration_plans(root: Path, iteration: int) -> list[Path]:
     if not plan_dir.exists():
         return []
     prefix = f"iter-{iteration:03d}-"
-    return [path for path in sorted(plan_dir.glob("*.md")) if path.name.startswith(prefix)]
+    return [
+        path for path in sorted(plan_dir.glob("*.md")) if path.name.startswith(prefix)
+    ]
 
 
-def _resolve_current_plan(root: Path, state: dict[str, Any]) -> tuple[Path | None, str | None]:
+def _resolve_current_plan(
+    root: Path, state: dict[str, Any]
+) -> tuple[Path | None, str | None]:
     current_plan = state.get("current_plan")
     if not current_plan:
         return None, None
@@ -129,7 +144,21 @@ def _fast_gate_commands() -> list[list[str]]:
     ]
 
 
-def _default_command_runner(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> dict[str, Any]:
+def _prepare_loop_knowledge_root(root: Path, iteration: int) -> Path:
+    knowledge_root = (
+        Path(tempfile.gettempdir())
+        / root.name
+        / "loop-knowledge"
+        / f"iter-{iteration:03d}"
+    )
+    shutil.rmtree(knowledge_root, ignore_errors=True)
+    knowledge_root.mkdir(parents=True, exist_ok=True)
+    return knowledge_root
+
+
+def _default_command_runner(
+    cmd: list[str], cwd: Path, env: dict[str, str] | None = None
+) -> dict[str, Any]:
     merged_env = os.environ.copy()
     if env:
         merged_env.update(env)
