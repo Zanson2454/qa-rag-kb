@@ -48,10 +48,18 @@ class OrchestratorV0Tests(unittest.TestCase):
             "evaluate {{task_id}} {{current_goal}} {{decision_reason}}\n"
         )
 
-        (self.root / "harness" / "changes" / "iter-005-change.md").write_text("# change\n")
-        (self.root / "harness" / "evaluations" / "iter-005-eval.md").write_text("evaluation:\n  passed: true\n")
-        (self.root / "harness" / "reflections" / "iter-005-reflection.md").write_text("# reflection\n")
-        (self.root / "harness" / "review-contexts" / "iter-006-context.md").write_text("# context\n")
+        (self.root / "harness" / "changes" / "iter-005-change.md").write_text(
+            "# change\n"
+        )
+        (self.root / "harness" / "evaluations" / "iter-005-eval.md").write_text(
+            "evaluation:\n  passed: true\n"
+        )
+        (self.root / "harness" / "reflections" / "iter-005-reflection.md").write_text(
+            "# reflection\n"
+        )
+        (self.root / "harness" / "review-contexts" / "iter-006-context.md").write_text(
+            "# context\n"
+        )
 
     def _write_state(self, payload: dict) -> None:
         (self.root / "orchestrator" / "state" / "task-state.json").write_text(
@@ -62,14 +70,22 @@ class OrchestratorV0Tests(unittest.TestCase):
     def _run_next(self) -> subprocess.CompletedProcess[str]:
         env = dict(**{"PYTHONPATH": str(ROOT)})
         return subprocess.run(
-            [sys.executable, str(ROOT / "orchestrator" / "run.py"), "next", "--root", str(self.root)],
+            [
+                sys.executable,
+                str(ROOT / "orchestrator" / "run.py"),
+                "next",
+                "--root",
+                str(self.root),
+            ],
             text=True,
             capture_output=True,
             env=env,
             check=False,
         )
 
-    def test_passed_evaluation_moves_to_evaluating_and_generates_implement_prompt(self) -> None:
+    def test_passed_evaluation_moves_to_evaluating_and_generates_implement_prompt(
+        self,
+    ) -> None:
         self._write_state(
             {
                 "task_id": "task-1",
@@ -85,7 +101,9 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("evaluating", state["current_state"])
         self.assertEqual("implement", state["decision"]["next_action"])
         generated = list((self.root / "orchestrator" / "runs").glob("*.md"))
@@ -109,12 +127,16 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("blocked", state["current_state"])
         self.assertEqual("continue", state["decision"]["next_action"])
 
     def test_exceeding_retry_limit_enters_failed(self) -> None:
-        (self.root / "harness" / "evaluations" / "iter-005-eval.md").write_text("evaluation:\n  passed: false\n")
+        (self.root / "harness" / "evaluations" / "iter-005-eval.md").write_text(
+            "evaluation:\n  passed: false\n"
+        )
         self._write_state(
             {
                 "task_id": "task-3",
@@ -130,7 +152,9 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("failed", state["current_state"])
         self.assertEqual("continue", state["decision"]["next_action"])
 
@@ -150,7 +174,9 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("planning", state["current_state"])
         self.assertEqual("plan", state["decision"]["next_action"])
         generated = list((self.root / "orchestrator" / "runs").glob("*.md"))
@@ -173,7 +199,9 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("completed", state["current_state"])
         self.assertEqual("continue", state["decision"]["next_action"])
 
@@ -200,7 +228,10 @@ class OrchestratorV0Tests(unittest.TestCase):
                 "current_iteration": 5,
                 "current_state": "evaluating",
                 "current_goal": "goal",
-                "current_plan": {"iteration": "5", "path": "docs/exec-plans/active/iter-005-plan.md"},
+                "current_plan": {
+                    "iteration": "5",
+                    "path": "docs/exec-plans/active/iter-005-plan.md",
+                },
                 "last_outputs": {},
                 "decision": {},
                 "limits": {"max_retry": 3, "retry_count": 0},
@@ -251,7 +282,9 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual("reflecting", state["current_state"])
         self.assertEqual("reflect", state["decision"]["next_action"])
         self.assertIn("errors", state["decision"]["reason"])
@@ -276,13 +309,17 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual(True, state["last_evaluation"]["passed"])
         self.assertEqual(95, state["last_evaluation"]["score"])
         self.assertEqual([], state["last_evaluation"]["errors"])
         self.assertEqual(["add coverage"], state["last_evaluation"]["suggestions"])
 
-    def test_markdown_evaluation_summary_is_extracted_from_realistic_format(self) -> None:
+    def test_markdown_evaluation_summary_is_extracted_from_realistic_format(
+        self,
+    ) -> None:
         (self.root / "harness" / "evaluations" / "iter-005-eval.md").write_text(
             "# Eval\n\n"
             "evaluation:\n"
@@ -310,15 +347,22 @@ class OrchestratorV0Tests(unittest.TestCase):
         result = self._run_next()
         self.assertEqual(0, result.returncode)
 
-        state = json.loads((self.root / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (self.root / "orchestrator" / "state" / "task-state.json").read_text()
+        )
         self.assertEqual(True, state["last_evaluation"]["passed"])
         self.assertEqual(91, state["last_evaluation"]["score"])
         self.assertEqual([], state["last_evaluation"]["errors"])
-        self.assertEqual(["add coverage", "tighten checks"], state["last_evaluation"]["suggestions"])
+        self.assertEqual(
+            ["add coverage", "tighten checks"], state["last_evaluation"]["suggestions"]
+        )
+
 
 class RepositoryStateFileTests(unittest.TestCase):
     def test_repository_state_file_tracks_existing_iteration_outputs(self) -> None:
-        state = json.loads((ROOT / "orchestrator" / "state" / "task-state.json").read_text())
+        state = json.loads(
+            (ROOT / "orchestrator" / "state" / "task-state.json").read_text()
+        )
 
         current_iteration = state["current_iteration"]
         self.assertIsInstance(current_iteration, int)
@@ -335,6 +379,15 @@ class RepositoryStateFileTests(unittest.TestCase):
             match = re.search(r"iter-(\d+)-", Path(rel_path).name)
             self.assertIsNotNone(match, rel_path)
             self.assertEqual(expected_iter, int(match.group(1)), rel_path)
+
+    def test_repository_state_file_current_plan_matches_iteration(self) -> None:
+        state = json.loads(
+            (ROOT / "orchestrator" / "state" / "task-state.json").read_text()
+        )
+
+        current_plan = state["current_plan"]
+        self.assertEqual(state["current_iteration"], current_plan["iteration"])
+        self.assertTrue((ROOT / current_plan["path"]).exists(), current_plan["path"])
 
 
 if __name__ == "__main__":

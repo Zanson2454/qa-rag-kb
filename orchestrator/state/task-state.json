@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 13,
+  "current_iteration": 15,
   "current_state": "completed",
-  "current_goal": "实现 Iter-013：Phase 1 收口，为 importer 增加重复 source_id 拦截、目标冲突处理和正式错误清单闭环。",
+  "current_goal": "实现 Iter-015：增强 AGENTS 主线治理规则，并创建 iteration-start-review 与 acceptance-closure 两个项目内 skill。",
   "current_plan": {
-    "iteration": 13,
-    "path": "docs/exec-plans/active/iter-013-phase1-closure-plan.md"
+    "iteration": 15,
+    "path": "docs/exec-plans/active/iter-015-agents-and-skills-governance-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-013-change.md",
-    "evaluation": "harness/evaluations/iter-013-eval.md",
-    "reflection": "harness/reflections/iter-013-reflection.md",
-    "review_context": "harness/review-contexts/iter-014-context.md"
+    "change": "harness/changes/iter-015-change.md",
+    "evaluation": "harness/evaluations/iter-015-eval.md",
+    "reflection": "harness/reflections/iter-015-reflection.md",
+    "review_context": "harness/review-contexts/iter-016-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-013，Phase 1 已收口完成，下一步应基于最新 review context 判断是否进入检索层前置准备工作。",
+    "reason": "当前轮次已完成 Iter-015，下一步应在真实迭代中应用这两个项目内 skill，并评估是否继续沉淀第三个 skill。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T05:10:25+00:00",
+  "updated_at": "2026-04-09T06:20:00+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -58,16 +58,21 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-013，已补齐 Phase 1 所需的重复 source_id 拦截、目标冲突处理和正式错误清单闭环。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-015，已增强 AGENTS 主线治理规则，并创建两个项目内 skill。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 97,
+    "score": 95,
     "errors": [],
     "suggestions": [
-      "下一轮应单独判断 admissible warning 是否足够允许进入检索层准备工作。",
-      "若进入 Phase 2，应把版本比对和自动升版设计为新的独立主题，而不是继续塞进 Phase 1。",
-      "可继续增强 validation details 的源文本定位，但这不再是 Phase 1 的阻断项。"
+      "下一轮应在真实迭代中应用这两个项目内 skill，并观察是否减少遗漏和返工。",
+      "若效果稳定，再决定是否沉淀第三个项目内 skill。",
+      "后续若项目内 skill 数量增加，可补 skill 索引文档。"
     ]
   }
 }
