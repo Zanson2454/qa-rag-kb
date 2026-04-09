@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 21,
+  "current_iteration": 22,
   "current_state": "completed",
-  "current_goal": "完成 Iter-021：恢复 defect expected 候选并清除当前 warnings=3 基线。",
+  "current_goal": "完成 Iter-022：验证 defect expected 候选恢复在中等批次下的稳定性。",
   "current_plan": {
-    "iteration": 21,
-    "path": "docs/exec-plans/active/iter-021-expected-candidate-recovery-plan.md"
+    "iteration": 22,
+    "path": "docs/exec-plans/active/iter-022-medium-batch-stability-validation-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-021-change.md",
-    "evaluation": "harness/evaluations/iter-021-eval.md",
-    "reflection": "harness/reflections/iter-021-reflection.md",
-    "review_context": "harness/review-contexts/iter-022-context.md"
+    "change": "harness/changes/iter-022-change.md",
+    "evaluation": "harness/evaluations/iter-022-eval.md",
+    "reflection": "harness/reflections/iter-022-reflection.md",
+    "review_context": "harness/review-contexts/iter-023-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-021，小批次 importer 基线已从 gate=warning warnings=3 收敛到 gate=passed warnings=0；下一步应在更大样本下验证当前候选恢复规则是否稳定。",
+    "reason": "当前轮次已完成 Iter-022，中等批次 importer 验收结果为 gate=warning warnings=18，说明小批次 passed 基线尚未稳定外推；下一步应按记录形态收敛 title-driven expected 恢复与非 defect 条目准入策略。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T08:04:57.978805+00:00",
+  "updated_at": "2026-04-09T08:20:35.449670+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -93,21 +93,26 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-021，已通过最小候选恢复规则将小批次 importer 基线收敛到 gate=passed。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-022，已确认小批次 passed 基线在 20+20 中等批次下仍回到 gate=warning，下一步应分类收敛剩余 warning。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 99,
+    "score": 90,
     "errors": [],
     "suggestions": [
-      "下一轮应在更大样本上重新验证当前候选恢复规则是否稳定。",
-      "若中等批次仍稳定，应把当前 importer passed 基线固化给 loop 主线。"
+      "下一轮应先按标题/描述形态拆分中等批次剩余 warning，再补更窄的 title-driven expected 恢复规则。",
+      "对既缺 expected 又缺 actual 的问句型记录，应先决定是阻断拒收还是转成单独分类。"
     ]
   },
   "last_loop": {
     "ok": true,
-    "iteration": 21,
-    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-021-expected-candidate-recovery-plan.md",
+    "iteration": 22,
+    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-022-medium-batch-stability-validation-plan.md",
     "stop_reason": null,
     "human_gate": true
   }
