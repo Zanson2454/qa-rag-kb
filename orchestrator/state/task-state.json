@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 15,
+  "current_iteration": 16,
   "current_state": "completed",
-  "current_goal": "实现 Iter-015：增强 AGENTS 主线治理规则，并创建 iteration-start-review 与 acceptance-closure 两个项目内 skill。",
+  "current_goal": "实现 Iter-016：将当前主线切回 ruff loop，并准备执行 ruff format 基线计划。",
   "current_plan": {
-    "iteration": 15,
-    "path": "docs/exec-plans/active/iter-015-agents-and-skills-governance-plan.md"
+    "iteration": 16,
+    "path": "docs/exec-plans/active/iter-016-ruff-loop-mainline-switch-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-015-change.md",
-    "evaluation": "harness/evaluations/iter-015-eval.md",
-    "reflection": "harness/reflections/iter-015-reflection.md",
-    "review_context": "harness/review-contexts/iter-016-context.md"
+    "change": "harness/changes/iter-016-change.md",
+    "evaluation": "harness/evaluations/iter-016-eval.md",
+    "reflection": "harness/reflections/iter-016-reflection.md",
+    "review_context": "harness/review-contexts/iter-017-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-015，下一步应在真实迭代中应用这两个项目内 skill，并评估是否继续沉淀第三个 skill。",
+    "reason": "当前轮次已完成 Iter-016 主线切换，下一步应直接执行 docs/exec-plans/active/iter-015-ruff-format-baseline-plan.md，收敛 ruff format 基线并再次运行真实 loop。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T06:20:00+00:00",
+  "updated_at": "2026-04-09T07:10:00+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -63,16 +63,20 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-015，已增强 AGENTS 主线治理规则，并创建两个项目内 skill。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-016，已将当前主线切回 ruff loop，并对齐到待执行的 ruff format 基线计划。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 95,
+    "score": 93,
     "errors": [],
     "suggestions": [
-      "下一轮应在真实迭代中应用这两个项目内 skill，并观察是否减少遗漏和返工。",
-      "若效果稳定，再决定是否沉淀第三个项目内 skill。",
-      "后续若项目内 skill 数量增加，可补 skill 索引文档。"
+      "下一轮应直接执行 docs/exec-plans/active/iter-015-ruff-format-baseline-plan.md，而不是重复做主线切换。",
+      "执行 ruff format 基线后，需要重新运行 orchestrator 测试和真实 loop，确认新的 stop reason。"
     ]
   }
 }
