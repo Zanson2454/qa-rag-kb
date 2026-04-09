@@ -1,3 +1,4 @@
+import importlib
 import sys
 import tempfile
 import unittest
@@ -10,9 +11,25 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from qa_kb_importer.importer import FixedTemplateImporter
-from qa_kb_importer.quality import build_batch_quality_report, determine_batch_gate
-from qa_kb_importer.validation import validate_normalized_record
+
+def _load_validation_symbols() -> tuple[object, object, object, object]:
+    importer_module = importlib.import_module("qa_kb_importer.importer")
+    quality_module = importlib.import_module("qa_kb_importer.quality")
+    validation_module = importlib.import_module("qa_kb_importer.validation")
+    return (
+        importer_module.FixedTemplateImporter,
+        quality_module.build_batch_quality_report,
+        quality_module.determine_batch_gate,
+        validation_module.validate_normalized_record,
+    )
+
+
+(
+    FixedTemplateImporter,
+    build_batch_quality_report,
+    determine_batch_gate,
+    validate_normalized_record,
+) = _load_validation_symbols()
 
 
 class NormalizedValidationTests(unittest.TestCase):
@@ -38,7 +55,11 @@ class NormalizedValidationTests(unittest.TestCase):
 
         result = validate_normalized_record(
             record=testcase,
-            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "testcase.schema.yaml",
+            schema_path=ROOT
+            / "docs"
+            / "knowledge"
+            / "schemas"
+            / "testcase.schema.yaml",
         )
 
         self.assertTrue(result["passed"])
@@ -62,7 +83,11 @@ class NormalizedValidationTests(unittest.TestCase):
 
         result = validate_normalized_record(
             record=testcase,
-            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "testcase.schema.yaml",
+            schema_path=ROOT
+            / "docs"
+            / "knowledge"
+            / "schemas"
+            / "testcase.schema.yaml",
         )
 
         self.assertFalse(result["passed"])
@@ -115,7 +140,9 @@ class NormalizedValidationTests(unittest.TestCase):
         )
 
         missing_expected_detail = next(
-            detail for detail in result["warning_details"] if detail["code"] == "missing_expected"
+            detail
+            for detail in result["warning_details"]
+            if detail["code"] == "missing_expected"
         )
         self.assertEqual("blocking", missing_expected_detail["admission"])
 
@@ -126,7 +153,11 @@ class NormalizedValidationTests(unittest.TestCase):
 
         result = validate_normalized_record(
             record=testcase,
-            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "testcase.schema.yaml",
+            schema_path=ROOT
+            / "docs"
+            / "knowledge"
+            / "schemas"
+            / "testcase.schema.yaml",
         )
 
         self.assertIn("testcase_steps_missing", result["warning_codes"])
@@ -149,8 +180,12 @@ class BatchQualityTests(unittest.TestCase):
                 testcase_limit=2,
             )
 
-            report_files = list((out_root / "imports" / "reports").glob("*-report.yaml"))
-            detail_files = list((out_root / "imports" / "reports").glob("*-validation-details.yaml"))
+            report_files = list(
+                (out_root / "imports" / "reports").glob("*-report.yaml")
+            )
+            detail_files = list(
+                (out_root / "imports" / "reports").glob("*-validation-details.yaml")
+            )
 
             self.assertEqual(1, len(report_files))
             self.assertEqual(1, len(detail_files))
@@ -201,7 +236,9 @@ class BatchQualityTests(unittest.TestCase):
         )
         self.assertEqual("failed", gate)
 
-    def test_batch_gate_fails_when_blocking_warning_rate_exceeds_threshold(self) -> None:
+    def test_batch_gate_fails_when_blocking_warning_rate_exceeds_threshold(
+        self,
+    ) -> None:
         gate = determine_batch_gate(
             schema_fail_count=0,
             error_count=0,

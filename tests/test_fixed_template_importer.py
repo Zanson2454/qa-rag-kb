@@ -1,3 +1,4 @@
+import importlib
 import sys
 import tempfile
 import unittest
@@ -11,8 +12,18 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from qa_kb_importer.importer import FixedTemplateImporter, SheetRow
-from qa_kb_importer.cli import main
+
+def _load_importer_symbols() -> tuple[object, object, object]:
+    importer_module = importlib.import_module("qa_kb_importer.importer")
+    cli_module = importlib.import_module("qa_kb_importer.cli")
+    return (
+        importer_module.FixedTemplateImporter,
+        importer_module.SheetRow,
+        cli_module.main,
+    )
+
+
+FixedTemplateImporter, SheetRow, main = _load_importer_symbols()
 
 
 class FixedTemplateImporterTests(unittest.TestCase):
@@ -27,7 +38,9 @@ class FixedTemplateImporterTests(unittest.TestCase):
             (ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml").read_text()
         )
         testcase_schema = yaml.safe_load(
-            (ROOT / "docs" / "knowledge" / "schemas" / "testcase.schema.yaml").read_text()
+            (
+                ROOT / "docs" / "knowledge" / "schemas" / "testcase.schema.yaml"
+            ).read_text()
         )
 
         self.assertIn("display_title", defect_schema["schema"]["required"])
@@ -103,7 +116,9 @@ class FixedTemplateImporterTests(unittest.TestCase):
             self.assertEqual(3, len(list(normalized_defects.glob("*.yaml"))))
             self.assertEqual(3, len(list(normalized_testcases.glob("*.yaml"))))
 
-            exported = yaml.safe_load(next(normalized_defects.glob("*.yaml")).read_text())
+            exported = yaml.safe_load(
+                next(normalized_defects.glob("*.yaml")).read_text()
+            )
             self.assertEqual(exported["title"], exported["display_title"])
 
     def test_export_result_includes_gate_summary_fields(self) -> None:
@@ -141,8 +156,12 @@ class FixedTemplateImporterTests(unittest.TestCase):
             self.assertEqual(2, manifest["defect_count"])
             self.assertEqual(2, manifest["testcase_count"])
             self.assertEqual(0, manifest["error_count"])
-            self.assertEqual(self.importer.defect_file.name, manifest["inputs"]["defect_file"])
-            self.assertEqual(self.importer.testcase_file.name, manifest["inputs"]["testcase_file"])
+            self.assertEqual(
+                self.importer.defect_file.name, manifest["inputs"]["defect_file"]
+            )
+            self.assertEqual(
+                self.importer.testcase_file.name, manifest["inputs"]["testcase_file"]
+            )
 
     def test_exports_independent_error_list_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -198,27 +217,44 @@ class FixedTemplateImporterTests(unittest.TestCase):
             def _read_testcase_cases(self) -> list[dict[str, object]]:
                 return []
 
-        importer = DuplicateDefectImporter(self.importer.defect_file, self.importer.testcase_file)
+        importer = DuplicateDefectImporter(
+            self.importer.defect_file, self.importer.testcase_file
+        )
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_root = Path(tmp_dir)
-            result = importer.export_small_batch(knowledge_root=out_root, defect_limit=5, testcase_limit=0)
+            result = importer.export_small_batch(
+                knowledge_root=out_root, defect_limit=5, testcase_limit=0
+            )
 
             self.assertEqual(1, result["defect_count"])
             self.assertEqual(1, result["error_count"])
             self.assertEqual(1, result["failure_count"])
 
-            error_list = yaml.safe_load((out_root / "imports" / "errors" / f"{result['import_batch_id']}.yaml").read_text())
-            self.assertEqual("duplicate_source_id", error_list["errors"][0]["error_type"])
+            error_list = yaml.safe_load(
+                (
+                    out_root
+                    / "imports"
+                    / "errors"
+                    / f"{result['import_batch_id']}.yaml"
+                ).read_text()
+            )
+            self.assertEqual(
+                "duplicate_source_id", error_list["errors"][0]["error_type"]
+            )
             self.assertEqual("DUP-1", error_list["errors"][0]["source_id"])
             self.assertIn("缺陷 B", error_list["errors"][0]["raw_excerpt"])
 
-    def test_target_conflict_is_reported_and_existing_file_is_not_overwritten(self) -> None:
+    def test_target_conflict_is_reported_and_existing_file_is_not_overwritten(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_root = Path(tmp_dir)
             normalized_dir = out_root / "normalized" / "defects"
             normalized_dir.mkdir(parents=True, exist_ok=True)
             target_path = normalized_dir / "DEF-824380.yaml"
-            target_path.write_text("id: DEF-824380\ncontent_text: existing\n", encoding="utf-8")
+            target_path.write_text(
+                "id: DEF-824380\ncontent_text: existing\n", encoding="utf-8"
+            )
 
             result = self.importer.export_small_batch(
                 knowledge_root=out_root,
@@ -227,9 +263,19 @@ class FixedTemplateImporterTests(unittest.TestCase):
             )
 
             self.assertEqual(1, result["conflict_count"])
-            self.assertEqual("id: DEF-824380\ncontent_text: existing\n", target_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                "id: DEF-824380\ncontent_text: existing\n",
+                target_path.read_text(encoding="utf-8"),
+            )
 
-            error_list = yaml.safe_load((out_root / "imports" / "errors" / f"{result['import_batch_id']}.yaml").read_text())
+            error_list = yaml.safe_load(
+                (
+                    out_root
+                    / "imports"
+                    / "errors"
+                    / f"{result['import_batch_id']}.yaml"
+                ).read_text()
+            )
             self.assertEqual("target_conflict", error_list["errors"][0]["error_type"])
 
     def test_manifest_includes_success_failure_and_conflict_counts(self) -> None:
@@ -241,7 +287,14 @@ class FixedTemplateImporterTests(unittest.TestCase):
                 testcase_limit=2,
             )
 
-            manifest = yaml.safe_load((out_root / "imports" / "manifests" / f"{result['import_batch_id']}.yaml").read_text())
+            manifest = yaml.safe_load(
+                (
+                    out_root
+                    / "imports"
+                    / "manifests"
+                    / f"{result['import_batch_id']}.yaml"
+                ).read_text()
+            )
             self.assertIn("success_count", manifest)
             self.assertIn("failure_count", manifest)
             self.assertIn("conflict_count", manifest)
@@ -264,7 +317,10 @@ class FixedTemplateImporterTests(unittest.TestCase):
             "report_path": "/tmp/report.yaml",
             "validation_details_path": "/tmp/details.yaml",
         }
-        with patch("qa_kb_importer.cli.FixedTemplateImporter.export_small_batch", return_value=summary):
+        with patch(
+            "qa_kb_importer.cli.FixedTemplateImporter.export_small_batch",
+            return_value=summary,
+        ):
             with patch("builtins.print") as print_mock:
                 with patch.object(sys, "argv", ["qa_kb_importer"]):
                     exit_code = main()
@@ -299,7 +355,9 @@ class FixedTemplateImporterTests(unittest.TestCase):
         self.assertEqual("expected_section_present", defect["expected_resolution"])
         self.assertEqual("期望结果*", defect["expected_source_section"])
 
-    def test_normalize_defect_marks_expected_missing_but_description_present(self) -> None:
+    def test_normalize_defect_marks_expected_missing_but_description_present(
+        self,
+    ) -> None:
         row = SheetRow(
             row_number=5,
             values={
@@ -316,7 +374,9 @@ class FixedTemplateImporterTests(unittest.TestCase):
 
         defect = self.importer._normalize_defect(row)
 
-        self.assertEqual("expected_missing_but_description_present", defect["expected_resolution"])
+        self.assertEqual(
+            "expected_missing_but_description_present", defect["expected_resolution"]
+        )
         self.assertEqual("缺陷描述*", defect["expected_source_section"])
 
     def test_normalize_defect_marks_expected_missing_unrecoverable(self) -> None:
@@ -336,7 +396,9 @@ class FixedTemplateImporterTests(unittest.TestCase):
 
         defect = self.importer._normalize_defect(row)
 
-        self.assertEqual("expected_missing_unrecoverable", defect["expected_resolution"])
+        self.assertEqual(
+            "expected_missing_unrecoverable", defect["expected_resolution"]
+        )
         self.assertEqual("", defect["expected_source_section"])
 
 
