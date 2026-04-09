@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 19,
+  "current_iteration": 20,
   "current_state": "completed",
-  "current_goal": "实现 Iter-019：对齐 business gate 失败语义，并为自治 loop 使用独立 knowledge_root。",
+  "current_goal": "完成 Iter-020：复验 business gate 语义传递，确认当前无需重开实现。",
   "current_plan": {
-    "iteration": 19,
-    "path": "docs/exec-plans/active/iter-019-business-gate-semantics-plan.md"
+    "iteration": 20,
+    "path": "docs/exec-plans/active/iter-020-gate-semantics-revalidation-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-019-change.md",
-    "evaluation": "harness/evaluations/iter-019-eval.md",
-    "reflection": "harness/reflections/iter-019-reflection.md",
-    "review_context": "harness/review-contexts/iter-020-context.md"
+    "change": "harness/changes/iter-020-change.md",
+    "evaluation": "harness/evaluations/iter-020-eval.md",
+    "reflection": "harness/reflections/iter-020-reflection.md",
+    "review_context": "harness/review-contexts/iter-021-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-019，business gate 的失败语义已与 loop 对齐；下一步应分析 gate=warning 的具体来源，并判断 importer 质量层是否还需继续收敛。",
+    "reason": "当前轮次已完成 Iter-020，已重新验收 gate 语义传递链路且确认无需重开实现；下一步应分析 gate=warning warnings=3 的具体来源，并判断 importer 质量层是否还需继续收敛。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T06:47:24.307084+00:00",
+  "updated_at": "2026-04-09T07:17:34.781297+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -83,11 +83,16 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-019，已对齐 business gate 失败语义，并为 loop 使用独立 knowledge_root。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-020，已重新验收 gate 语义传递链路且确认无需重开实现。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 97,
+    "score": 98,
     "errors": [],
     "suggestions": [
       "下一轮应分析当前 business gate warning 的具体来源，并判断 importer 质量层是否需要继续收敛。",
@@ -96,8 +101,8 @@
   },
   "last_loop": {
     "ok": true,
-    "iteration": 19,
-    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-019-business-gate-semantics-plan.md",
+    "iteration": 20,
+    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-020-gate-semantics-revalidation-plan.md",
     "stop_reason": null,
     "human_gate": true
   }
