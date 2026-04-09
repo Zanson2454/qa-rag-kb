@@ -8,16 +8,15 @@ artifact:
 
 ## 本轮目标
 
-实现 Iter-013：在现有 `orchestrator v0` 基础上增加第一版本地自治 loop runner，串联上下文装载、plan 校验、`ruff`、单测、batch run 和状态摘要回写，但不自动 `commit/push`。
+执行 Iter-013：完成 QA KB Phase 1 的最后收口，为 importer 增加重复 source_id 检查、目标路径冲突拦截、正式错误清单结构，以及进入下一阶段前的准入标准说明。
 
 ## 新增/修改文件
 
-- `docs/exec-plans/active/iter-013-autonomous-loop-runner-plan.md`
-- `orchestrator/run_loop.py`
-- `orchestrator/run.py`
-- `orchestrator/README.md`
-- `tests/test_orchestrator_loop_runner.py`
-- `docs/governance/autonomous-loop-design.md`
+- `docs/exec-plans/active/iter-013-phase1-closure-plan.md`
+- `src/qa_kb_importer/importer.py`
+- `src/qa_kb_importer/cli.py`
+- `docs/knowledge/import-runbook.md`
+- `tests/test_fixed_template_importer.py`
 - `harness/changes/iter-013-change.md`
 - `harness/evaluations/iter-013-eval.md`
 - `harness/reflections/iter-013-reflection.md`
@@ -26,29 +25,29 @@ artifact:
 
 ## 每个改动对应的 plan step
 
-- `tests/test_orchestrator_loop_runner.py`
-  - 对应“先写 loop runner 的失败测试”
-- `orchestrator/run_loop.py`
-  - 对应“实现第一版 loop runner 与结果模型”
-- `orchestrator/run.py`
-  - 对应“接入 `loop` 命令入口与状态摘要回写”
-- `orchestrator/README.md`
-  - 对应“补第一版 loop 的范围、命令与限制说明”
-- `docs/governance/autonomous-loop-design.md`
-  - 对应“记录第一版真实验证结论”
-- `orchestrator/state/task-state.json`
-  - 对应“推进当前轮次并保留最近 loop 结果”
+- `docs/exec-plans/active/iter-013-phase1-closure-plan.md`
+  - 对应“先收敛 Phase 1 剩余缺口，再实现”
+- `tests/test_fixed_template_importer.py`
+  - 对应“先写重复 source_id / target_conflict / manifest / CLI 摘要失败测试”
+- `src/qa_kb_importer/importer.py`
+  - 对应“在 importer 中补重复检查、目标冲突处理、错误清单细化和 manifest 收口”
+- `src/qa_kb_importer/cli.py`
+  - 对应“在 CLI 输出中补 conflict 摘要”
+- `docs/knowledge/import-runbook.md`
+  - 对应“固化 Phase 1 准入标准、版本边界和冲突处理规则”
 - `harness/changes/iter-013-change.md` 等本轮文档
-  - 对应“补齐本轮 evaluation / reflection / review context”
+  - 对应“输出本轮完整 change / evaluation / reflection / review context”
+- `orchestrator/state/task-state.json`
+  - 对应“推进仓库状态到 Iter-013 收口结果”
 
 ## 风险
 
-- 当前 `loop` 的 fast gates 和 business gate 命令仍是固定最小版，尚未参数化到不同 iteration。
-- 当前仓库存在同一 iteration 多 plan 主线的历史遗留问题，第一版 runner 只能阻断，不能自动化修复。
-- 当前 `loop` 仍未实现完整 repair loop，只能给出停机和 human gate 信号。
+- 当前仍固定 `version=1`，只做冲突拦截，不做自动升版；这符合 Phase 1 边界，但意味着 Phase 2 前仍需规划正式版本合并策略。
+- `success_count` 与 `warning_count` 是不同口径：前者是落盘成功记录数，后者是质量标记计数，后续文档必须持续区分。
+- 当前 `target_conflict` 只做“拦截并记错”，不提供自动人工复核流。
 
 ## 未解决问题
 
-- 是否要把 `tests/test_orchestrator_loop_runner.py` 纳入 loop 自己的默认单测集合，还未定稿。
-- `loop` 写回 `task-state.json` 的摘要字段目前是最小版，后续可能需要补更多执行细节。
-- 下一轮应先决定如何收敛当前仓库里的 iteration plan 分叉，再用 loop 推进真实 importer 迭代。
+- 自动升版与版本比对仍未实现，只完成了 Phase 1 所需的冲突拦截边界。
+- admissible warning 是否足够允许进入检索层准备阶段，仍需要单独定稿。
+- 还没有从 `缺陷描述*` 自动生成候选 `expected`，这属于下一阶段质量收敛项。

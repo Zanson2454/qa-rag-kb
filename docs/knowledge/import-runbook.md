@@ -58,6 +58,7 @@ PYTHONPATH=src python3 -m qa_kb_importer \
   - `warnings=<count>`
   - `semantic_warnings=<count>`
   - `warning_rate=<ratio>`
+  - `conflicts=<count>`
   - `report=<report-path>`
 - 批次报告文件：
   - `docs/knowledge/imports/reports/<batch-id>-report.yaml`
@@ -89,6 +90,18 @@ PYTHONPATH=src python3 -m qa_kb_importer \
     - `missing_actual`
     - `missing_steps`
 
+## 重复与冲突处理
+
+- 当前 Phase 1 仍固定 `version=1`，不做自动升版。
+- 若同一批次内出现重复 `source_id`：
+  - 当前记录不入库
+  - error list 记录 `duplicate_source_id`
+- 若目标目录中已存在同名 normalized 文件：
+  - 当前批次不覆盖已有文件
+  - error list 记录 `target_conflict`
+  - CLI 会打印 `conflicts=<count>`
+- 当前 Phase 1 只做冲突拦截，不做自动版本合并或人工复核流自动化。
+
 ## 中等批次验收建议
 
 - Phase 1 当前默认先跑 `20 defect + 20 testcase`。
@@ -102,6 +115,8 @@ PYTHONPATH=src python3 -m qa_kb_importer \
   - `passed`：可直接作为 Phase 1 验收证据。
   - `warning`：可继续保留样本，但要评估 warning 是否主要来自 `admissible` 噪声。
   - `failed`：先收敛 `blocking` warning，再考虑进入下一阶段。
+- 额外约束：
+  - 即使 `gate=warning/passed`，若 `conflict_count > 0` 也不应直接视为可交接批次，需要先处理冲突。
 
 ## 已知限制
 

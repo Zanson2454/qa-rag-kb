@@ -161,6 +161,91 @@ class FixedTemplateImporterTests(unittest.TestCase):
             self.assertEqual(result["import_batch_id"], error_list["import_batch_id"])
             self.assertEqual([], error_list["errors"])
 
+    def test_duplicate_source_id_is_reported_and_not_written(self) -> None:
+        class DuplicateDefectImporter(FixedTemplateImporter):
+            def _read_defect_rows(self) -> list[SheetRow]:
+                return [
+                    SheetRow(
+                        row_number=5,
+                        values={
+                            "ID": "DUP-1",
+                            "类型": "缺陷",
+                            "标题": "缺陷 A",
+                            "内容": "### 重现步骤\n步骤1\n### 实际结果\n实际1\n### 期望结果*\n期望1",
+                            "状态": "待处理",
+                            "严重程度": "一般",
+                            "标签": "area/A",
+                            "来源": "代码开发",
+                            "环境": "测试",
+                        },
+                    ),
+                    SheetRow(
+                        row_number=6,
+                        values={
+                            "ID": "DUP-1",
+                            "类型": "缺陷",
+                            "标题": "缺陷 B",
+                            "内容": "### 重现步骤\n步骤2\n### 实际结果\n实际2\n### 期望结果*\n期望2",
+                            "状态": "待处理",
+                            "严重程度": "一般",
+                            "标签": "area/A",
+                            "来源": "代码开发",
+                            "环境": "测试",
+                        },
+                    ),
+                ]
+
+            def _read_testcase_cases(self) -> list[dict[str, object]]:
+                return []
+
+        importer = DuplicateDefectImporter(self.importer.defect_file, self.importer.testcase_file)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_root = Path(tmp_dir)
+            result = importer.export_small_batch(knowledge_root=out_root, defect_limit=5, testcase_limit=0)
+
+            self.assertEqual(1, result["defect_count"])
+            self.assertEqual(1, result["error_count"])
+            self.assertEqual(1, result["failure_count"])
+
+            error_list = yaml.safe_load((out_root / "imports" / "errors" / f"{result['import_batch_id']}.yaml").read_text())
+            self.assertEqual("duplicate_source_id", error_list["errors"][0]["error_type"])
+            self.assertEqual("DUP-1", error_list["errors"][0]["source_id"])
+            self.assertIn("缺陷 B", error_list["errors"][0]["raw_excerpt"])
+
+    def test_target_conflict_is_reported_and_existing_file_is_not_overwritten(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_root = Path(tmp_dir)
+            normalized_dir = out_root / "normalized" / "defects"
+            normalized_dir.mkdir(parents=True, exist_ok=True)
+            target_path = normalized_dir / "DEF-824380.yaml"
+            target_path.write_text("id: DEF-824380\ncontent_text: existing\n", encoding="utf-8")
+
+            result = self.importer.export_small_batch(
+                knowledge_root=out_root,
+                defect_limit=1,
+                testcase_limit=0,
+            )
+
+            self.assertEqual(1, result["conflict_count"])
+            self.assertEqual("id: DEF-824380\ncontent_text: existing\n", target_path.read_text(encoding="utf-8"))
+
+            error_list = yaml.safe_load((out_root / "imports" / "errors" / f"{result['import_batch_id']}.yaml").read_text())
+            self.assertEqual("target_conflict", error_list["errors"][0]["error_type"])
+
+    def test_manifest_includes_success_failure_and_conflict_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out_root = Path(tmp_dir)
+            result = self.importer.export_small_batch(
+                knowledge_root=out_root,
+                defect_limit=2,
+                testcase_limit=2,
+            )
+
+            manifest = yaml.safe_load((out_root / "imports" / "manifests" / f"{result['import_batch_id']}.yaml").read_text())
+            self.assertIn("success_count", manifest)
+            self.assertIn("failure_count", manifest)
+            self.assertIn("conflict_count", manifest)
+
     def test_cli_prints_gate_summary_fields(self) -> None:
         summary = {
             "import_batch_id": "batch-test",
@@ -174,6 +259,7 @@ class FixedTemplateImporterTests(unittest.TestCase):
             "semantic_warning_count": 2,
             "admissible_warning_count": 5,
             "blocking_warning_count": 1,
+            "conflict_count": 0,
             "warning_rate": 0.15,
             "report_path": "/tmp/report.yaml",
             "validation_details_path": "/tmp/details.yaml",
@@ -190,6 +276,7 @@ class FixedTemplateImporterTests(unittest.TestCase):
         self.assertIn("semantic_warnings=2", printed)
         self.assertIn("admissible_warnings=5", printed)
         self.assertIn("blocking_warnings=1", printed)
+        self.assertIn("conflicts=0", printed)
         self.assertIn("warning_rate=0.15", printed)
 
     def test_normalize_defect_marks_expected_section_present(self) -> None:

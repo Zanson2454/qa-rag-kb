@@ -46,6 +46,7 @@ def main() -> int:
         f"semantic_warnings={result['semantic_warning_count']} "
         f"admissible_warnings={result['admissible_warning_count']} "
         f"blocking_warnings={result['blocking_warning_count']} "
+        f"conflicts={result['conflict_count']} "
         f"warning_rate={result['warning_rate']} report={result['report_path']} "
         f"details={result['validation_details_path']} under {args.knowledge_root}"
     )

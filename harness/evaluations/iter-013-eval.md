@@ -5,66 +5,87 @@ artifact:
   type: evaluation
   stage: reviewing
   status: approved
-  target: orchestrator/
+  target: src/qa_kb_importer/
 
 evaluation:
   passed: true
-  score: 96
+  score: 97
   errors: []
   suggestions:
-    - 下一轮应先收敛 iteration plan 分叉，否则真实 loop 会持续停在 `plan_conflict`。
-    - 后续可把 fast gates 和 business gate 参数化，避免命令固定死在第一版实现里。
-    - 若后续准备扩大自治范围，可再补 repair loop 和更细的状态摘要。
+    - 下一轮应单独判断 admissible warning 是否足够允许进入检索层准备工作。
+    - 若进入 Phase 2，应把版本比对和自动升版设计为新的独立主题，而不是继续塞进 Phase 1。
+    - 可继续增强 validation details 的源文本定位，但这不再是 Phase 1 的阻断项。
 
-## 1. loop runner 是否已可执行
-
-- 结果：PASS
-- 依据：
-  - 已新增 `orchestrator/run_loop.py`
-  - 已实现：
-    - `Context Loader`
-    - `Plan Gate`
-    - `Fast Gates`
-    - `Business Gates`
-    - 结构化结果输出
-
-## 2. `run.py` 是否已接入 `loop` 命令
+## 1. 重复 source_id 是否已被正式拦截
 
 - 结果：PASS
 - 依据：
-  - `orchestrator/run.py` 已支持：
-    - `next`
-    - `loop`
-  - 执行 `loop` 后会把最小摘要写回 `task-state.json`
+  - `src/qa_kb_importer/importer.py` 已对 defect / testcase 批次内重复 `source_id` 做检查。
+  - 重复记录不入库，并写入 error list：
+    - `error_type=duplicate_source_id`
+  - 对应行为已被 `tests/test_fixed_template_importer.py` 覆盖。
 
-## 3. plan gate 是否能阻断主线冲突
-
-- 结果：PASS
-- 依据：
-  - `tests/test_orchestrator_loop_runner.py` 已覆盖：
-    - plan 缺失
-    - iteration 多 plan 冲突
-  - 真实执行：
-    - `python3 orchestrator/run.py loop --root .`
-  - 结果：
-    - `loop iteration=12 ok=false stop_reason=plan_conflict`
-
-## 4. 既有 orchestrator v0 是否未回退
+## 2. 目标路径冲突是否已处理
 
 - 结果：PASS
 - 依据：
-  - 执行：
-    - `python3 -m unittest tests/test_orchestrator_v0.py tests/test_orchestrator_loop_runner.py -v`
-  - 结果：
-    - `Ran 18 tests ... OK`
+  - 若目标 normalized 文件已存在：
+    - 当前批次不覆盖
+    - error list 记录 `target_conflict`
+  - CLI 与返回结果已补 `conflict_count`
+  - 对应行为已被 `tests/test_fixed_template_importer.py` 覆盖。
 
-## 5. 本轮是否仍保持“本地闭环，不自动 push”
+## 3. 错误清单和 manifest 是否已满足 Phase 1 最小要求
 
 - 结果：PASS
 - 依据：
-  - 第一版 loop 只执行本地门禁与状态摘要更新
-  - 没有引入自动 `commit/push`
+  - error list 已输出：
+    - `source_file`
+    - `source_sheet`
+    - `source_row`
+    - `source_id`
+    - `error_type`
+    - `error_message`
+    - `raw_excerpt`
+  - manifest 已补：
+    - `success_count`
+    - `failure_count`
+    - `conflict_count`
 
-## 6. 总结
+## 4. runbook 是否已固化 Phase 1 版本边界与准入标准
 
-本轮已把自治 loop 从设计文档推进到可执行的第一版 runner，并通过测试和一次真实运行验证了最关键的停机条件；因此评测结论为 `passed: true`。
+- 结果：PASS
+- 依据：
+  - `docs/knowledge/import-runbook.md` 已明确：
+    - 当前仍固定 `version=1`
+    - 当前只做冲突拦截，不做自动升版
+    - `conflict_count > 0` 时不应直接视为可交接批次
+
+## 5. Phase 1 总计划是否已满足 done criteria
+
+- 结果：PASS
+- 依据：
+  - schema、目录、导入策略、映射表、manifest、`content_text`、自评文档均已存在。
+  - 重复判定、冲突进入人工复核前的拦截条件、版本边界已文档化并具备最小运行时实现。
+  - 当前剩余事项主要属于 Phase 2 前置准备，不再是 Phase 1 阻断项。
+
+## 6. 验证证据
+
+- `python3 -m unittest tests/test_fixed_template_importer.py tests/test_validation_and_quality.py -v`
+- 结果：
+  - `Ran 29 tests ... OK`
+- `python3 -m unittest tests/test_orchestrator_v0.py -v`
+- 结果：
+  - `Ran 12 tests ... OK`
+- `PYTHONPATH=src python3 -m qa_kb_importer --knowledge-root /tmp/qa-kb-iter-013-check --defect-limit 20 --testcase-limit 20`
+- 结果：
+  - 成功输出：
+    - `gate=warning`
+    - `conflicts=0`
+  - 成功生成：
+    - `/tmp/qa-kb-iter-013-check/imports/reports/batch-20260409T051025Z-report.yaml`
+    - `/tmp/qa-kb-iter-013-check/imports/reports/batch-20260409T051025Z-validation-details.yaml`
+
+## 7. 总结
+
+本轮已把 Phase 1 还缺的运行时闭环补齐：重复 source_id 拦截、目标冲突不覆盖、正式错误清单结构和 conflict 摘要均已落地。基于当前计划范围，Phase 1 已达到完成条件，因此评测结论为 `passed: true`。

@@ -64,18 +64,48 @@ class FixedTemplateImporter:
         shutil.copy2(self.defect_file, raw_defect_path)
         shutil.copy2(self.testcase_file, raw_testcase_path)
 
-        defects = self._collect_defect_records(limit=defect_limit)
-        testcases = self._collect_testcase_records(limit=testcase_limit)
+        defects = self._collect_defect_records(limit=defect_limit, errors=errors)
+        testcases = self._collect_testcase_records(limit=testcase_limit, errors=errors)
         testcase_step_row_count_before_grouping = sum(len(case["snapshot"]["entries"]) for case in testcases)
         testcase_case_count_after_grouping = len(testcases)
+        conflict_count = 0
 
         for item in defects:
-            self._write_yaml(layout["normalized_defects"] / f"{item['record']['id']}.yaml", item["record"])
-            self._write_yaml(layout["snapshot_defects"] / f"{item['record']['id']}.yaml", item["snapshot"])
+            normalized_path = layout["normalized_defects"] / f"{item['record']['id']}.yaml"
+            snapshot_path = layout["snapshot_defects"] / f"{item['record']['id']}.yaml"
+            if normalized_path.exists():
+                conflict_count += 1
+                errors.append(
+                    self._build_error_entry(
+                        record=item["record"],
+                        error_type="target_conflict",
+                        error_message=f"normalized target already exists: {normalized_path.name}",
+                        raw_excerpt=item["snapshot"]["raw_values"],
+                    )
+                )
+                continue
+            self._write_yaml(normalized_path, item["record"])
+            self._write_yaml(snapshot_path, item["snapshot"])
 
         for item in testcases:
-            self._write_yaml(layout["normalized_testcases"] / f"{item['record']['id']}.yaml", item["record"])
-            self._write_yaml(layout["snapshot_testcases"] / f"{item['record']['id']}.yaml", item["snapshot"])
+            normalized_path = layout["normalized_testcases"] / f"{item['record']['id']}.yaml"
+            snapshot_path = layout["snapshot_testcases"] / f"{item['record']['id']}.yaml"
+            if normalized_path.exists():
+                conflict_count += 1
+                errors.append(
+                    self._build_error_entry(
+                        record=item["record"],
+                        error_type="target_conflict",
+                        error_message=f"normalized target already exists: {normalized_path.name}",
+                        raw_excerpt=item["snapshot"]["header"],
+                    )
+                )
+                continue
+            self._write_yaml(normalized_path, item["record"])
+            self._write_yaml(snapshot_path, item["snapshot"])
+
+        success_count = len(defects) + len(testcases) - conflict_count
+        failure_count = len(errors)
 
         manifest = {
             "import_batch_id": import_batch_id,
@@ -89,6 +119,9 @@ class FixedTemplateImporter:
             "defect_count": len(defects),
             "testcase_count": len(testcases),
             "error_count": len(errors),
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "conflict_count": conflict_count,
             "warning_count": sum(len(item["record"]["quality_flags"]) for item in defects + testcases),
         }
         error_payload = {
@@ -141,6 +174,9 @@ class FixedTemplateImporter:
             "defect_count": len(defects),
             "testcase_count": len(testcases),
             "error_count": len(errors),
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "conflict_count": conflict_count,
             "gate": report["gate"],
             "warning_count": report["quality_warning_count"],
             "schema_fail_count": report["schema_fail_count"],
@@ -154,6 +190,27 @@ class FixedTemplateImporter:
             "report_path": str(report_path),
             "validation_details_path": str(validation_details_path),
         }
+
+    def _build_error_entry(
+        self,
+        record: dict[str, Any],
+        error_type: str,
+        error_message: str,
+        raw_excerpt: dict[str, Any],
+    ) -> dict[str, Any]:
+        source = record.get("source", {})
+        return {
+            "source_file": source.get("source_file", ""),
+            "source_sheet": source.get("source_sheet", ""),
+            "source_row": source.get("source_row", 0),
+            "source_id": source.get("source_id", ""),
+            "error_type": error_type,
+            "error_message": error_message,
+            "raw_excerpt": self._render_raw_excerpt(raw_excerpt),
+        }
+
+    def _render_raw_excerpt(self, raw_excerpt: dict[str, Any]) -> str:
+        return yaml.safe_dump(raw_excerpt, allow_unicode=True, sort_keys=False).strip()
 
     def _write_yaml(self, path: Path, payload: dict[str, Any]) -> None:
         path.write_text(
@@ -180,13 +237,27 @@ class FixedTemplateImporter:
     def _build_import_batch_id(self) -> str:
         return datetime.now(timezone.utc).strftime("batch-%Y%m%dT%H%M%SZ")
 
-    def _collect_defect_records(self, limit: int) -> list[dict[str, Any]]:
+    def _collect_defect_records(self, limit: int, errors: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
         rows = self._read_defect_rows()
         defects: list[dict[str, Any]] = []
+        seen_source_ids: set[str] = set()
         for row in rows:
             if row.values.get("类型") != "缺陷":
                 continue
             defect = self._normalize_defect(row)
+            source_id = defect["source"]["source_id"]
+            if source_id in seen_source_ids:
+                if errors is not None:
+                    errors.append(
+                        self._build_error_entry(
+                            record=defect,
+                            error_type="duplicate_source_id",
+                            error_message=f"duplicate source_id in current batch: {source_id}",
+                            raw_excerpt=row.values,
+                        )
+                    )
+                continue
+            seen_source_ids.add(source_id)
             if not defect["steps"]:
                 continue
             defects.append(
@@ -210,11 +281,29 @@ class FixedTemplateImporter:
                 break
         return defects
 
-    def _collect_testcase_records(self, limit: int) -> list[dict[str, Any]]:
+    def _collect_testcase_records(
+        self,
+        limit: int,
+        errors: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
         cases = self._read_testcase_cases()
         testcases: list[dict[str, Any]] = []
+        seen_source_ids: set[str] = set()
         for case in cases[:limit]:
             testcase = self._normalize_testcase(case)
+            source_id = testcase["source"]["source_id"]
+            if source_id in seen_source_ids:
+                if errors is not None:
+                    errors.append(
+                        self._build_error_entry(
+                            record=testcase,
+                            error_type="duplicate_source_id",
+                            error_message=f"duplicate source_id in current batch: {source_id}",
+                            raw_excerpt=case["header"],
+                        )
+                    )
+                continue
+            seen_source_ids.add(source_id)
             testcases.append(
                 {
                     "record": testcase,
