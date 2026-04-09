@@ -1,28 +1,28 @@
 {
   "task_id": "qa-rag-kb-main",
-  "current_iteration": 22,
+  "current_iteration": 23,
   "current_state": "completed",
-  "current_goal": "完成 Iter-022：验证 defect expected 候选恢复在中等批次下的稳定性。",
+  "current_goal": "完成 Iter-023：执行最后 1 轮 importer warning closure 并正式签收。",
   "current_plan": {
-    "iteration": 22,
-    "path": "docs/exec-plans/active/iter-022-medium-batch-stability-validation-plan.md"
+    "iteration": 23,
+    "path": "docs/exec-plans/active/iter-023-one-round-warning-closure-plan.md"
   },
   "last_outputs": {
-    "change": "harness/changes/iter-022-change.md",
-    "evaluation": "harness/evaluations/iter-022-eval.md",
-    "reflection": "harness/reflections/iter-022-reflection.md",
-    "review_context": "harness/review-contexts/iter-023-context.md"
+    "change": "harness/changes/iter-023-change.md",
+    "evaluation": "harness/evaluations/iter-023-eval.md",
+    "reflection": "harness/reflections/iter-023-reflection.md",
+    "review_context": "harness/review-contexts/iter-024-context.md"
   },
   "decision": {
     "next_action": "continue",
-    "reason": "当前轮次已完成 Iter-022，中等批次 importer 验收结果为 gate=warning warnings=18，说明小批次 passed 基线尚未稳定外推；下一步应按记录形态收敛 title-driven expected 恢复与非 defect 条目准入策略。",
+    "reason": "当前轮次已完成 Iter-023，已按最后 1 轮 stop rule 将中等批次 warning 从 18 收敛到 7，并正式签收为 improved baseline；下一步应进入下一阶段 planning，不再继续 Phase 1 warning 调优。",
     "prompt_file": "orchestrator/runs/iter-005-continue.md"
   },
   "limits": {
     "max_retry": 3,
     "retry_count": 0
   },
-  "updated_at": "2026-04-09T08:20:35.449670+00:00",
+  "updated_at": "2026-04-09T08:59:35.164655+00:00",
   "history": [
     {
       "state": "evaluating",
@@ -98,21 +98,26 @@
       "state": "completed",
       "action": "continue",
       "reason": "当前轮次已完成 Iter-022，已确认小批次 passed 基线在 20+20 中等批次下仍回到 gate=warning，下一步应分类收敛剩余 warning。"
+    },
+    {
+      "state": "completed",
+      "action": "continue",
+      "reason": "当前轮次已完成 Iter-023，已按 stop rule 完成最后 1 轮 warning closure，并签收为 improved baseline。"
     }
   ],
   "last_evaluation": {
     "passed": true,
-    "score": 90,
+    "score": 96,
     "errors": [],
     "suggestions": [
-      "下一轮应先按标题/描述形态拆分中等批次剩余 warning，再补更窄的 title-driven expected 恢复规则。",
-      "对既缺 expected 又缺 actual 的问句型记录，应先决定是阻断拒收还是转成单独分类。"
+      "下一步应进入下一阶段 planning，而不是继续 Phase 1 warning 调优。",
+      "将 DEF-822065、DEF-823636 和 TC-1735084 作为已知限制记录到后续数据治理 backlog。"
     ]
   },
   "last_loop": {
     "ok": true,
-    "iteration": 22,
-    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-022-medium-batch-stability-validation-plan.md",
+    "iteration": 23,
+    "plan_path": "/Users/anson/Documents/Erda-project/qa-rag-kb/docs/exec-plans/active/iter-023-one-round-warning-closure-plan.md",
     "stop_reason": null,
     "human_gate": true
   }

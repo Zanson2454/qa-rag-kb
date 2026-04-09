@@ -520,6 +520,53 @@ class FixedTemplateImporterTests(unittest.TestCase):
         self.assertEqual("缺陷描述*", defect["expected_source_section"])
         self.assertIn("generated_expected_candidate", defect["quality_flags"])
 
+    def test_normalize_defect_recovers_expected_from_title_driven_patterns(
+        self,
+    ) -> None:
+        cases = [
+            ("没保存上", ("保存", "成功")),
+            ("未显示全", ("完整", "显示")),
+            ("没有回显", ("回显", "正确")),
+            ("报 500/404", ("500", "404")),
+            ("过账后才允许", ("过账", "允许")),
+        ]
+
+        for index, (title, semantic_tokens) in enumerate(cases, start=20):
+            with self.subTest(title=title):
+                row = SheetRow(
+                    row_number=index,
+                    values={
+                        "ID": str(index),
+                        "标题": title,
+                        "内容": (
+                            "### 缺陷描述*\n"
+                            "问题表现待确认，当前标题已经足够说明业务场景\n"
+                            "### 重现步骤\n"
+                            "步骤1\n步骤2\n"
+                            "### 实际结果\n"
+                            "当前表现待确认"
+                        ),
+                        "标签": "area/A",
+                        "严重程度": "一般",
+                        "状态": "待处理",
+                        "来源": "代码开发",
+                        "环境": "测试",
+                    },
+                )
+
+                defect = self.importer._normalize_defect(row)
+
+                self.assertTrue(defect["expected"])
+                self.assertEqual(
+                    "expected_generated_from_symptom", defect["expected_resolution"]
+                )
+                self.assertEqual("缺陷标题", defect["expected_source_section"])
+                self.assertIn("generated_expected_candidate", defect["quality_flags"])
+                self.assertTrue(
+                    any(token in defect["expected"] for token in semantic_tokens),
+                    defect["expected"],
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

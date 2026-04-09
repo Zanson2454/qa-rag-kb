@@ -438,17 +438,29 @@ class FixedTemplateImporter:
     def _recover_defect_expected_candidate(
         self, title: str, description: str
     ) -> dict[str, str] | None:
-        for source_section, text in (
-            ("缺陷描述*", description),
-            ("缺陷标题", title),
-        ):
-            candidate = self._build_expected_candidate_from_symptom(text)
-            if candidate:
-                return {
-                    "expected_candidate": candidate,
-                    "expected_resolution": "expected_generated_from_symptom",
-                    "expected_source_section": source_section,
-                }
+        description_candidate = self._build_expected_candidate_from_symptom(description)
+        if description_candidate:
+            return {
+                "expected_candidate": description_candidate,
+                "expected_resolution": "expected_generated_from_symptom",
+                "expected_source_section": "缺陷描述*",
+            }
+
+        title_candidate = self._build_expected_candidate_from_title(title)
+        if title_candidate:
+            return {
+                "expected_candidate": title_candidate,
+                "expected_resolution": "expected_generated_from_symptom",
+                "expected_source_section": "缺陷标题",
+            }
+
+        title_symptom_candidate = self._build_expected_candidate_from_symptom(title)
+        if title_symptom_candidate:
+            return {
+                "expected_candidate": title_symptom_candidate,
+                "expected_resolution": "expected_generated_from_symptom",
+                "expected_source_section": "缺陷标题",
+            }
         return None
 
     def _build_expected_candidate_from_symptom(self, text: str) -> str | None:
@@ -467,6 +479,31 @@ class FixedTemplateImporter:
 
         if self._has_failure_symptom(normalized):
             return "操作应成功，不应失败"
+
+        return None
+
+    def _build_expected_candidate_from_title(self, title: str) -> str | None:
+        normalized = self._clean_text(title)
+        if not normalized:
+            return None
+
+        if "没保存上" in normalized:
+            return "保存后应成功生效"
+
+        if "未显示全" in normalized:
+            return "相关信息应完整显示"
+
+        if "没有回显" in normalized:
+            return "请求参数或界面值应正确回显"
+
+        if re.search(r"报\s*500(?:\s*/\s*404)?", normalized):
+            return "接口请求不应返回 500/404"
+
+        if re.search(r"报\s*404(?:\s*/\s*500)?", normalized):
+            return "接口请求不应返回 500/404"
+
+        if "过账后才允许" in normalized:
+            return "相关动作仅应在过账后才允许执行"
 
         return None
 

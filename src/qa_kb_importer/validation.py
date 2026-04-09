@@ -7,8 +7,25 @@ import yaml
 
 
 CORE_FIELDS_BY_RECORD_TYPE = {
-    "defect": ["title", "display_title", "module", "severity", "steps", "expected", "actual", "content_text"],
-    "testcase": ["name", "display_title", "module", "steps", "expected", "priority", "content_text"],
+    "defect": [
+        "title",
+        "display_title",
+        "module",
+        "severity",
+        "steps",
+        "expected",
+        "actual",
+        "content_text",
+    ],
+    "testcase": [
+        "name",
+        "display_title",
+        "module",
+        "steps",
+        "expected",
+        "priority",
+        "content_text",
+    ],
 }
 
 WARNING_DEFINITIONS = {
@@ -93,6 +110,24 @@ WARNING_DEFINITIONS = {
         "default_source_section": "步骤与结果/操作步骤",
         "default_admission": "admissible",
     },
+    "question_like_record": {
+        "severity": "warning",
+        "message": "record appears to be a question or confirmation item",
+        "suggestion": "确认是否应转为待确认事项，而不是直接作为 defect 收录",
+        "category": "semantic",
+        "source_field": "title",
+        "default_source_section": "缺陷标题",
+        "default_admission": "blocking",
+    },
+    "bundle_like_record": {
+        "severity": "warning",
+        "message": "record appears to bundle multiple issues or requirement-like notes",
+        "suggestion": "拆分为独立 defect，或转为需求/确认事项",
+        "category": "semantic",
+        "source_field": "title",
+        "default_source_section": "缺陷标题",
+        "default_admission": "admissible",
+    },
 }
 
 
@@ -101,7 +136,9 @@ def load_schema(schema_path: Path | str) -> dict[str, Any]:
     return payload["schema"]
 
 
-def validate_normalized_record(record: dict[str, Any], schema_path: Path | str) -> dict[str, Any]:
+def validate_normalized_record(
+    record: dict[str, Any], schema_path: Path | str
+) -> dict[str, Any]:
     schema = load_schema(schema_path)
     errors: list[str] = []
     warnings: list[str] = []
@@ -123,13 +160,17 @@ def validate_normalized_record(record: dict[str, Any], schema_path: Path | str) 
         if not _matches_type(record[field_name], field_schema):
             expected_type = field_schema.get("type", "unknown")
             actual_type = type(record[field_name]).__name__
-            errors.append(f"type mismatch for field {field_name}: expected {expected_type}, got {actual_type}")
+            errors.append(
+                f"type mismatch for field {field_name}: expected {expected_type}, got {actual_type}"
+            )
 
     display_title = str(record.get("display_title", "")).strip()
     if not display_title:
         errors.append("display_title is empty")
         missing_display_title += 1
-        _append_warning("missing_display_title", record, warnings, warning_codes, warning_details)
+        _append_warning(
+            "missing_display_title", record, warnings, warning_codes, warning_details
+        )
 
     record_type = record.get("record_type", schema.get("record_type"))
     for field in CORE_FIELDS_BY_RECORD_TYPE.get(record_type, []):
@@ -166,7 +207,9 @@ def validate_normalized_record(record: dict[str, Any], schema_path: Path | str) 
     }
 
 
-def validate_normalized_directory(directory: Path | str, schema_path: Path | str) -> list[dict[str, Any]]:
+def validate_normalized_directory(
+    directory: Path | str, schema_path: Path | str
+) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for path in sorted(Path(directory).glob("*.yaml")):
         record = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -198,7 +241,9 @@ def _matches_type(value: Any, schema: dict[str, Any]) -> bool:
             if field not in value:
                 return False
         for field_name, field_schema in schema.get("properties", {}).items():
-            if field_name in value and not _matches_type(value[field_name], field_schema):
+            if field_name in value and not _matches_type(
+                value[field_name], field_schema
+            ):
                 return False
         return True
     return True
@@ -225,28 +270,86 @@ def _append_semantic_warnings(
         steps = record.get("steps", [])
         expected = record.get("expected", "")
         actual = record.get("actual", "")
+        if _is_question_like_record(record):
+            _append_warning(
+                "question_like_record",
+                record,
+                warnings,
+                warning_codes,
+                warning_details,
+            )
+            return
+        if _is_bundle_like_record(record):
+            _append_warning(
+                "bundle_like_record",
+                record,
+                warnings,
+                warning_codes,
+                warning_details,
+            )
+            return
         if _is_empty_value(steps):
-            _append_warning("missing_steps", record, warnings, warning_codes, warning_details)
-        elif isinstance(steps, list) and len(steps) == 1 and len(str(steps[0]).strip()) < 10:
-            _append_warning("steps_too_short", record, warnings, warning_codes, warning_details)
+            _append_warning(
+                "missing_steps", record, warnings, warning_codes, warning_details
+            )
+        elif (
+            isinstance(steps, list)
+            and len(steps) == 1
+            and len(str(steps[0]).strip()) < 10
+        ):
+            _append_warning(
+                "steps_too_short", record, warnings, warning_codes, warning_details
+            )
         if _is_empty_value(expected):
-            _append_warning("missing_expected", record, warnings, warning_codes, warning_details)
+            _append_warning(
+                "missing_expected", record, warnings, warning_codes, warning_details
+            )
         if _is_empty_value(actual):
-            _append_warning("missing_actual", record, warnings, warning_codes, warning_details)
+            _append_warning(
+                "missing_actual", record, warnings, warning_codes, warning_details
+            )
         if not _is_empty_value(expected) and not _is_empty_value(actual):
             if _normalize_text(expected) == _normalize_text(actual):
-                _append_warning("expected_actual_too_similar", record, warnings, warning_codes, warning_details)
+                _append_warning(
+                    "expected_actual_too_similar",
+                    record,
+                    warnings,
+                    warning_codes,
+                    warning_details,
+                )
         return
 
     if record_type == "testcase":
         steps = record.get("steps", [])
         expected = record.get("expected", "")
         if _is_empty_value(steps):
-            _append_warning("testcase_steps_missing", record, warnings, warning_codes, warning_details)
-        elif isinstance(steps, list) and len(steps) == 1 and len(str(steps[0]).strip()) < 10:
-            _append_warning("testcase_steps_too_short", record, warnings, warning_codes, warning_details)
+            _append_warning(
+                "testcase_steps_missing",
+                record,
+                warnings,
+                warning_codes,
+                warning_details,
+            )
+        elif (
+            isinstance(steps, list)
+            and len(steps) == 1
+            and len(str(steps[0]).strip()) < 10
+        ):
+            _append_warning(
+                "testcase_steps_too_short",
+                record,
+                warnings,
+                warning_codes,
+                warning_details,
+            )
         if _is_empty_value(expected):
-            _append_warning("testcase_expected_missing", record, warnings, warning_codes, warning_details)
+            _append_warning(
+                "testcase_expected_missing",
+                record,
+                warnings,
+                warning_codes,
+                warning_details,
+            )
 
 
 def _append_warning(
@@ -279,13 +382,69 @@ def _normalize_text(value: Any) -> str:
     return " ".join(str(value).split()).strip().lower()
 
 
-def _resolve_source_section(code: str, record: dict[str, Any], definition: dict[str, str]) -> str:
+def _match_record_scope(record: dict[str, Any], tokens: tuple[str, ...]) -> str | None:
+    title = _normalize_text(
+        " ".join(
+            str(part)
+            for part in (record.get("title", ""), record.get("display_title", ""))
+            if str(part).strip()
+        )
+    )
+    if title and any(token in title for token in tokens):
+        return "缺陷标题"
+
+    content = _normalize_text(record.get("content_text", ""))
+    if content and any(token in content for token in tokens):
+        return "缺陷描述*"
+
+    return None
+
+
+def _question_like_source_section(record: dict[str, Any]) -> str | None:
+    return _match_record_scope(
+        record, ("？", "?", "能否", "是否", "请确认", "需要确认", "待确认")
+    )
+
+
+def _bundle_like_source_section(record: dict[str, Any]) -> str | None:
+    return _match_record_scope(
+        record, ("问题若干", "问题集合", "布局调整", "需要产品确认")
+    )
+
+
+def _is_question_like_record(record: dict[str, Any]) -> bool:
+    if not _is_empty_value(record.get("expected")):
+        return False
+    if not _is_empty_value(record.get("actual")):
+        return False
+    return _question_like_source_section(record) is not None
+
+
+def _is_bundle_like_record(record: dict[str, Any]) -> bool:
+    if not _is_empty_value(record.get("expected")):
+        return False
+    return _bundle_like_source_section(record) is not None
+
+
+def _resolve_source_section(
+    code: str, record: dict[str, Any], definition: dict[str, str]
+) -> str:
     if code == "missing_expected":
         return str(record.get("expected_source_section", "")).strip()
+    if code == "question_like_record":
+        return _question_like_source_section(record) or definition.get(
+            "default_source_section", ""
+        )
+    if code == "bundle_like_record":
+        return _bundle_like_source_section(record) or definition.get(
+            "default_source_section", ""
+        )
     return definition.get("default_source_section", "")
 
 
-def _resolve_admission(code: str, record: dict[str, Any], definition: dict[str, str]) -> str:
+def _resolve_admission(
+    code: str, record: dict[str, Any], definition: dict[str, str]
+) -> str:
     if code == "missing_expected":
         resolution = record.get("expected_resolution")
         if resolution == "expected_missing_but_description_present":

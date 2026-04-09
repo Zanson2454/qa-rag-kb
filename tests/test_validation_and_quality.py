@@ -131,10 +131,19 @@ class NormalizedValidationTests(unittest.TestCase):
         self.assertEqual("admissible", detail["admission"])
 
     def test_defect_semantic_warnings_are_reported_with_codes(self) -> None:
-        defect = self.importer.import_defects(limit=1)[0]
-        defect["steps"] = []
-        defect["expected"] = ""
-        defect["actual"] = ""
+        defect = {
+            "id": "DEF-SEM-1",
+            "record_type": "defect",
+            "title": "普通缺陷记录",
+            "display_title": "普通缺陷记录",
+            "module": "area/A",
+            "severity": "一般",
+            "steps": [],
+            "expected": "",
+            "actual": "",
+            "content_text": "这是普通缺陷记录，不包含确认型问题语义。",
+            "quality_flags": [],
+        }
 
         result = validate_normalized_record(
             record=defect,
@@ -190,6 +199,121 @@ class NormalizedValidationTests(unittest.TestCase):
         )
         self.assertEqual("blocking", missing_expected_detail["admission"])
 
+    def test_question_like_defect_emits_dedicated_warning_code(self) -> None:
+        record = {
+            "id": "DEF-Q-1",
+            "record_type": "defect",
+            "title": "这个场景需要确认吗？",
+            "display_title": "这个场景需要确认吗？",
+            "module": "area/A",
+            "severity": "一般",
+            "steps": ["请确认是否继续处理"],
+            "expected": "",
+            "actual": "",
+            "content_text": "这是一个确认型问题，请确认当前处理方式。",
+            "quality_flags": ["missing_expected_section"],
+        }
+
+        result = validate_normalized_record(
+            record=record,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertIn("question_like_record", result["warning_codes"])
+        question_detail = next(
+            detail
+            for detail in result["warning_details"]
+            if detail["code"] == "question_like_record"
+        )
+        self.assertEqual("blocking", question_detail["admission"])
+        self.assertNotEqual("missing_expected", question_detail["code"])
+
+    def test_question_like_defect_does_not_trigger_from_steps_only(self) -> None:
+        record = {
+            "id": "DEF-Q-STEP",
+            "record_type": "defect",
+            "title": "普通缺陷记录",
+            "display_title": "普通缺陷记录",
+            "module": "area/A",
+            "severity": "一般",
+            "steps": ["请确认是否继续处理"],
+            "expected": "",
+            "actual": "",
+            "content_text": "这是普通缺陷记录，不包含确认型问题语义。",
+            "quality_flags": ["missing_expected_section"],
+        }
+
+        result = validate_normalized_record(
+            record=record,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertNotIn("question_like_record", result["warning_codes"])
+        self.assertIn("missing_expected", result["warning_codes"])
+
+    def test_bundle_like_defect_is_admissible_without_auto_expected(self) -> None:
+        row = SheetRow(
+            row_number=9,
+            values={
+                "ID": "9",
+                "标题": "问题若干：布局调整，需要产品确认",
+                "内容": (
+                    "### 缺陷描述*\n"
+                    "问题若干，涉及布局调整与需要产品确认的事项。\n"
+                    "### 重现步骤\n"
+                    "步骤1\n步骤2\n"
+                    "### 实际结果\n"
+                    "当前表现待确认"
+                ),
+                "标签": "area/A",
+                "严重程度": "一般",
+                "状态": "待处理",
+                "来源": "代码开发",
+                "环境": "测试",
+            },
+        )
+
+        defect = self.importer._normalize_defect(row)
+
+        self.assertEqual("", defect["expected"])
+        self.assertNotIn("generated_expected_candidate", defect["quality_flags"])
+
+        result = validate_normalized_record(
+            record=defect,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertIn("bundle_like_record", result["warning_codes"])
+        bundle_detail = next(
+            detail
+            for detail in result["warning_details"]
+            if detail["code"] == "bundle_like_record"
+        )
+        self.assertEqual("admissible", bundle_detail["admission"])
+
+    def test_bundle_like_defect_does_not_trigger_from_steps_only(self) -> None:
+        record = {
+            "id": "DEF-B-STEP",
+            "record_type": "defect",
+            "title": "普通缺陷记录",
+            "display_title": "普通缺陷记录",
+            "module": "area/A",
+            "severity": "一般",
+            "steps": ["需要产品确认后再继续处理"],
+            "expected": "",
+            "actual": "当前表现待确认",
+            "content_text": "这是普通缺陷记录，不包含 bundle 型标题或正文。",
+            "quality_flags": ["missing_expected_section"],
+        }
+
+        result = validate_normalized_record(
+            record=record,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertNotIn("bundle_like_record", result["warning_codes"])
+        self.assertIn("missing_expected", result["warning_codes"])
+
     def test_testcase_semantic_warnings_are_reported_with_codes(self) -> None:
         testcase = self.importer.import_testcases(limit=1)[0]
         testcase["steps"] = []
@@ -206,6 +330,102 @@ class NormalizedValidationTests(unittest.TestCase):
 
         self.assertIn("testcase_steps_missing", result["warning_codes"])
         self.assertIn("testcase_expected_missing", result["warning_codes"])
+
+    def test_special_record_types_are_split_from_generic_missing_expected(self) -> None:
+        recovered_defect = self.importer._normalize_defect(
+            SheetRow(
+                row_number=11,
+                values={
+                    "ID": "11",
+                    "标题": "没保存上",
+                    "内容": (
+                        "### 缺陷描述*\n"
+                        "页面表现待确认，标题已经说明问题场景。\n"
+                        "### 重现步骤\n"
+                        "步骤1\n步骤2\n"
+                        "### 实际结果\n"
+                        "当前表现待确认"
+                    ),
+                    "标签": "area/A",
+                    "严重程度": "一般",
+                    "状态": "待处理",
+                    "来源": "代码开发",
+                    "环境": "测试",
+                },
+            )
+        )
+        question_like_record = {
+            "id": "DEF-Q-2",
+            "record_type": "defect",
+            "title": "这个处理方式需要确认吗？",
+            "display_title": "这个处理方式需要确认吗？",
+            "module": "area/A",
+            "severity": "一般",
+            "steps": ["请确认是否继续处理"],
+            "expected": "",
+            "actual": "",
+            "content_text": "这是一个确认型问题，请确认当前处理方式。",
+            "quality_flags": ["missing_expected_section"],
+        }
+
+        bundle_like_defect = self.importer._normalize_defect(
+            SheetRow(
+                row_number=12,
+                values={
+                    "ID": "12",
+                    "标题": "问题集合：布局调整，需要产品确认",
+                    "内容": (
+                        "### 缺陷描述*\n"
+                        "问题集合，涉及布局调整与需要产品确认的事项。\n"
+                        "### 重现步骤\n"
+                        "步骤1\n步骤2\n"
+                        "### 实际结果\n"
+                        "当前表现待确认"
+                    ),
+                    "标签": "area/A",
+                    "严重程度": "一般",
+                    "状态": "待处理",
+                    "来源": "代码开发",
+                    "环境": "测试",
+                },
+            )
+        )
+
+        recovered_result = validate_normalized_record(
+            record=recovered_defect,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+        question_result = validate_normalized_record(
+            record=question_like_record,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+        bundle_result = validate_normalized_record(
+            record=bundle_like_defect,
+            schema_path=ROOT / "docs" / "knowledge" / "schemas" / "defect.schema.yaml",
+        )
+
+        self.assertNotIn("missing_expected", recovered_result["warning_codes"])
+        self.assertIn("question_like_record", question_result["warning_codes"])
+        self.assertIn("bundle_like_record", bundle_result["warning_codes"])
+
+        report = build_batch_quality_report(
+            batch_id="batch-test",
+            source_type="excel",
+            manifest={"defect_count": 3, "testcase_count": 0},
+            error_list={"errors": []},
+            validation_results=[
+                recovered_result,
+                question_result,
+                bundle_result,
+            ],
+            details_file="details.yaml",
+            testcase_step_row_count_before_grouping=0,
+            testcase_case_count_after_grouping=0,
+        )
+
+        self.assertNotIn("missing_expected", report["warning_code_distribution"])
+        self.assertEqual(1, report["warning_code_distribution"]["question_like_record"])
+        self.assertEqual(1, report["warning_code_distribution"]["bundle_like_record"])
 
 
 class BatchQualityTests(unittest.TestCase):
